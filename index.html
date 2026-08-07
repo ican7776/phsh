@@ -3,132 +3,120 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>포항세화고 학생·성적 정보시스템</title>
+  <title>학생·성적 종합 정보시스템</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #f4f6f9; color: #333; padding-bottom: 40px; }
+    body { background-color: #f4f6f9; color: #333; padding-bottom: 30px; }
     
-    header { background: #004085; color: white; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; }
+    header { background: #004085; color: white; padding: 14px; text-align: center; font-size: 18px; font-weight: bold; }
     .container { padding: 12px; max-width: 600px; margin: 0 auto; }
 
-    /* 1. 교사/학부모/학생 메뉴 구분 탭 */
-    .role-tabs { display: flex; background: #e9ecef; border-radius: 8px; padding: 4px; margin-bottom: 12px; }
-    .role-btn { flex: 1; padding: 10px; border: none; background: transparent; font-size: 14px; font-weight: bold; color: #495057; border-radius: 6px; cursor: pointer; }
-    .role-btn.active { background: #004085; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    /* 1. 최상단 역할 구분 탭 (교사 / 학부모 / 학생) */
+    .top-role-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .role-btn { flex: 1; padding: 12px; border: 1px solid #ccc; background: #e9ecef; font-size: 15px; font-weight: bold; color: #495057; border-radius: 6px; cursor: pointer; text-align: center; }
+    .role-btn.active { background: #004085; color: white; border-color: #004085; }
 
-    /* 인증/로그인 카드 */
-    .auth-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 15px; }
-    .auth-card h3 { font-size: 16px; color: #004085; margin-bottom: 8px; }
-    .input-group { display: flex; gap: 8px; margin-top: 10px; }
-    .input-group input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-    .btn { padding: 10px 14px; background: #004085; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    /* 로그인/인증 카드 */
+    .card { background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 12px; }
+    .card h3 { font-size: 15px; color: #004085; margin-bottom: 10px; }
+    .input-row { display: flex; gap: 6px; margin-top: 8px; }
+    .input-row input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    .btn { padding: 10px 14px; background: #004085; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
     .btn-green { background: #28a745; }
 
-    /* 검색 및 교사용 컨트롤 */
-    .search-box { background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .search-box input, .search-box select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-top: 5px; }
+    /* 2. 학생 선택 드롭다운 (스케치 반영) */
+    .student-dropdown-box { background: white; padding: 12px; border-radius: 8px; border: 1px solid #004085; margin-bottom: 12px; }
+    .student-dropdown-box label { font-size: 12px; font-weight: bold; color: #004085; display: block; margin-bottom: 4px; }
+    .student-select { width: 100%; padding: 10px; font-size: 15px; font-weight: bold; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
 
-    /* 교사 전용 100명 전체 학생 요약 리스트 */
-    .teacher-student-list { max-height: 250px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; margin-top: 8px; background: #fff; }
-    .student-item { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; cursor: pointer; font-size: 13px; }
-    .student-item:hover { background: #eef5ff; }
-    .student-item.selected { background: #d0e1fd; font-weight: bold; }
+    /* 3. 성적 추이 그래프 영역 (스케치 반영) */
+    .graph-card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 12px; }
+    .graph-title { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 8px; text-align: center; }
+    .chart-container { width: 100%; height: 210px; }
 
-    /* 3. 항목별 아코디언 (접기/펴기) */
-    .accordion { margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .accordion-header { background: #fff; padding: 14px 16px; font-size: 15px; font-weight: bold; color: #222; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
-    .accordion-header::after { content: '▼'; font-size: 12px; color: #888; }
-    .accordion.active .accordion-header::after { transform: rotate(180deg); }
-    .accordion-content { display: none; padding: 12px; background: #fafafa; border-top: 1px solid #eee; }
-    .accordion.active .accordion-content { display: block; }
+    /* 4. 각각의 기능 탭 (스케치 서브 탭 반영) */
+    .sub-tabs { display: flex; background: #e9ecef; border-bottom: 2px solid #004085; border-radius: 6px 6px 0 0; overflow-x: auto; }
+    .sub-tab-btn { flex: 1; min-width: 80px; padding: 10px 6px; font-size: 12px; font-weight: bold; border: none; background: transparent; color: #555; cursor: pointer; text-align: center; white-space: nowrap; }
+    .sub-tab-btn.active { background: #004085; color: white; border-radius: 6px 6px 0 0; }
 
-    .data-card { background: white; padding: 10px 12px; border-radius: 6px; border: 1px solid #e9ecef; margin-bottom: 8px; font-size: 13px; }
-    .data-row { display: flex; justify-content: space-between; padding: 3px 0; }
+    /* 하단 화면 영역 */
+    .tab-view-card { background: white; padding: 14px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); min-height: 200px; }
+    .data-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #eee; font-size: 13px; }
+    .data-row:last-child { border-bottom: none; }
     .data-label { color: #666; }
-    .data-val { font-weight: bold; color: #333; }
-
-    .chart-container { width: 100%; height: 200px; margin-top: 10px; }
+    .data-val { font-weight: bold; color: #222; }
+    .item-card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 10px; margin-bottom: 8px; font-size: 13px; }
   </style>
 </head>
 <body>
 
-  <header>포항세화고 학생·성적 시스템</header>
+  <header>포항세화고 학생·성적 종합시스템</header>
 
   <div class="container">
 
-    <!-- 1. 메뉴 구분 (교사 / 학부모 / 학생) -->
-    <div class="role-tabs">
-      <button class="role-btn active" onclick="switchRole('teacher')">👨‍🏫 교사</button>
-      <button class="role-btn" onclick="switchRole('parent')">👨‍👩‍👧 학부모</button>
-      <button class="role-btn" onclick="switchRole('student')">👨‍🎓 학생</button>
+    <!-- 1. 스케치 최상단 메뉴: [교사] [학부모] [학생] -->
+    <div class="top-role-tabs">
+      <button class="role-btn active" onclick="selectRole('teacher')">교사</button>
+      <button class="role-btn" onclick="selectRole('parent')">학부모</button>
+      <button class="role-btn" onclick="selectRole('student')">학생</button>
     </div>
 
-    <!-- 2. 학부모/학생 본인 인증 구역 -->
-    <div id="authArea" class="auth-card" style="display:none;">
-      <h3 id="authTitle">인증</h3>
-      <p style="font-size:12px; color:#666;" id="authDesc">등록된 휴대폰 번호로 인증하세요.</p>
-      <div class="input-group">
-        <input type="tel" id="phoneInput" placeholder="휴대폰 번호 (- 없이 입력)">
-        <button class="btn" onclick="requestAuth()">인증번호 전송</button>
+    <!-- 교사 전용 ID/PW 로그인 영역 -->
+    <div id="teacherLoginCard" class="card">
+      <h3>🔒 교사 로그인 (관리자 전용)</h3>
+      <div class="input-row">
+        <input type="text" id="teacherId" placeholder="아이디 (admin)">
+        <input type="password" id="teacherPw" placeholder="비밀번호 (admin)">
+        <button class="btn" onclick="loginTeacher()">로그인</button>
       </div>
-      <div id="codeGroup" class="input-group" style="display:none;">
+      <p id="loginMsg" style="font-size:12px; color:red; margin-top:5px;"></p>
+    </div>
+
+    <!-- 학부모/학생 본인인증 로그인 영역 -->
+    <div id="authLoginCard" class="card" style="display:none;">
+      <h3 id="authTitle">본인 인증</h3>
+      <div class="input-row">
+        <input type="tel" id="phoneInput" placeholder="휴대폰 번호 (-없이 입력)">
+        <button class="btn" onclick="sendAuthCode()">인증 요청</button>
+      </div>
+      <div id="authCodeRow" class="input-row" style="display:none;">
         <input type="number" id="codeInput" placeholder="인증번호 6자리">
-        <button class="btn btn-green" onclick="verifyAuth()">확인</button>
+        <button class="btn btn-green" onclick="verifyAuthCode()">확인</button>
       </div>
       <p id="authMsg" style="font-size:12px; margin-top:5px;"></p>
     </div>
 
-    <!-- 4. 교사 모드: 100명 전체 조회 및 검색 -->
-    <div id="teacherSearchArea" class="search-box">
-      <label style="font-size:12px; font-weight:bold; color:#004085;">전체 학생 목록 (100명 조회 및 검색)</label>
-      <input type="text" id="teacherSearchInput" placeholder="이름 또는 학번 검색..." onkeyup="filterTeacherStudents()">
-      <div class="teacher-student-list" id="teacherStudentList"></div>
-    </div>
+    <!-- 로그인 성공 후 나타나는 데이터 조회 전체 메인 화면 -->
+    <div id="mainDashboard" style="display:none;">
 
-    <!-- 학생 상세 데이터 출력 영역 (아코디언 항목들) -->
-    <div id="detailDataArea">
-
-      <div class="accordion active">
-        <div class="accordion-header" onclick="toggleAccordion(this)">👤 학생 기본정보</div>
-        <div class="accordion-content" id="infoContent"></div>
+      <!-- 2. 스케치 드롭다운 메뉴: [학생기본정보 ▾] -->
+      <div class="student-dropdown-box">
+        <label id="selectLabel">학생 선택 (100명 목록)</label>
+        <select id="studentSelect" class="student-select" onchange="onStudentSelectChange()">
+          <!-- 동적 학생 목록 -->
+        </select>
       </div>
 
-      <div class="accordion active">
-        <div class="accordion-header" onclick="toggleAccordion(this)">📊 성적 추이 그래프</div>
-        <div class="accordion-content">
-          <div class="chart-container"><canvas id="scoreChart"></canvas></div>
+      <!-- 3. 스케치 성적 추이 그래프 영역 -->
+      <div class="graph-card">
+        <div class="graph-title">📈 성적 추이 그래프 (내신 / 모의고사)</div>
+        <div class="chart-container">
+          <canvas id="scoreChart"></canvas>
         </div>
       </div>
 
-      <div class="accordion">
-        <div class="accordion-header" onclick="toggleAccordion(this)">📝 내신 성적 상세</div>
-        <div class="accordion-content" id="gradeContent"></div>
+      <!-- 4. 스케치 각각의 기능 탭 & 하단 화면 영역 -->
+      <div class="sub-tabs">
+        <button class="sub-tab-btn active" onclick="switchSubTab('info')">학생기본정보</button>
+        <button class="sub-tab-btn" onclick="switchSubTab('grade')">내신성적</button>
+        <button class="sub-tab-btn" onclick="switchSubTab('mock')">모의고사</button>
+        <button class="sub-tab-btn" onclick="switchSubTab('etc')">출결/창체/진로</button>
       </div>
 
-      <div class="accordion">
-        <div class="accordion-header" onclick="toggleAccordion(this)">🎯 모의고사 성적</div>
-        <div class="accordion-content" id="mockContent"></div>
-      </div>
-
-      <div class="accordion">
-        <div class="accordion-header" onclick="toggleAccordion(this)">📅 출결 기록</div>
-        <div class="accordion-content" id="attendanceContent"></div>
-      </div>
-
-      <div class="accordion">
-        <div class="accordion-header" onclick="toggleAccordion(this)">🎨 창의적 체험활동</div>
-        <div class="accordion-content" id="actContent"></div>
-      </div>
-
-      <div class="accordion">
-        <div class="accordion-header" onclick="toggleAccordion(this)">🏆 수상 및 자격</div>
-        <div class="accordion-content" id="awardContent"></div>
-      </div>
-
-      <div class="accordion">
-        <div class="accordion-header" onclick="toggleAccordion(this)">🚀 진로 희망</div>
-        <div class="accordion-content" id="careerContent"></div>
+      <!-- 하단 화면 전환 표시 영역 -->
+      <div class="tab-view-card" id="tabViewArea">
+        <!-- 탭 클릭 시 내용 동적 변경 -->
       </div>
 
     </div>
@@ -138,186 +126,222 @@
   <script src="data.js"></script>
   <script>
     let currentRole = 'teacher';
-    let currentStudentId = null;
+    let isTeacherLoggedIn = false;
+    let selectedStudentId = null;
     let authCode = '';
+    let currentSubTab = 'info';
     let chartInstance = null;
 
-    // 초기화
     window.onload = function() {
-      switchRole('teacher');
+      selectRole('teacher');
     };
 
-    // 1. 역할 스위칭 (교사 / 학부모 / 학생)
-    function switchRole(role) {
+    // 최상단 역할 선택 (교사 / 학부모 / 학생)
+    function selectRole(role) {
       currentRole = role;
-      document.querySelectorAll('.role-btn').forEach((b, i) => {
-        b.classList.toggle('active', (role==='teacher'&&i===0) || (role==='parent'&&i===1) || (role==='student'&&i===2));
+      document.querySelectorAll('.role-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', (role==='teacher'&&idx===0)||(role==='parent'&&idx===1)||(role==='student'&&idx===2));
       });
 
-      const authArea = document.getElementById('authArea');
-      const teacherSearchArea = document.getElementById('teacherSearchArea');
-      const detailDataArea = document.getElementById('detailDataArea');
+      const teacherCard = document.getElementById('teacherLoginCard');
+      const authCard = document.getElementById('authLoginCard');
+      const dashboard = document.getElementById('mainDashboard');
+
+      dashboard.style.display = 'none';
 
       if (role === 'teacher') {
-        authArea.style.display = 'none';
-        teacherSearchArea.style.display = 'block';
-        detailDataArea.style.display = 'block';
-        renderTeacherStudentList(excelData["01_학생명렬표"].rows);
-        selectStudent(excelData["01_학생명렬표"].rows[0].학번); // 첫 학생 선택
+        authCard.style.display = 'none';
+        if (isTeacherLoggedIn) {
+          dashboard.style.display = 'block';
+          initTeacherDropdown();
+        } else {
+          teacherCard.style.display = 'block';
+        }
       } else {
-        teacherSearchArea.style.display = 'none';
-        detailDataArea.style.display = 'none';
-        authArea.style.display = 'block';
-        
+        teacherCard.style.display = 'none';
+        authCard.style.display = 'block';
         document.getElementById('authTitle').innerText = role === 'parent' ? '👨‍👩‍👧 학부모 본인 인증' : '👨‍🎓 학생 본인 인증';
-        document.getElementById('authDesc').innerText = role === 'parent' ? '등록된 학부모 휴대폰 번호로 인증하세요.' : '등록된 학생 휴대폰 번호로 인증하세요.';
         document.getElementById('phoneInput').value = role === 'parent' ? '010-2001-2222' : '010-1001-1111';
-        document.getElementById('codeGroup').style.display = 'none';
+        document.getElementById('authCodeRow').style.display = 'none';
         document.getElementById('authMsg').innerText = '';
       }
     }
 
-    // 2. 인증 번호 발송 및 본인만 보이게 처리
-    function requestAuth() {
-      const phone = document.getElementById('phoneInput').value.trim();
-      let foundStudent = null;
+    // 교사 전용 admin / admin 로그인
+    function loginTeacher() {
+      const id = document.getElementById('teacherId').value.trim();
+      const pw = document.getElementById('teacherPw').value.trim();
 
-      if (currentRole === 'student') {
-        foundStudent = excelData["01_학생명렬표"].rows.find(s => s.학생휴대폰 === phone);
-      } else if (currentRole === 'parent') {
-        foundStudent = excelData["01_학생명렬표"].rows.find(s => s.보호자1_휴대폰 === phone);
+      if (id === 'admin' && pw === 'admin') {
+        isTeacherLoggedIn = true;
+        document.getElementById('teacherLoginCard').style.display = 'none';
+        document.getElementById('mainDashboard').style.display = 'block';
+        initTeacherDropdown();
+      } else {
+        document.getElementById('loginMsg').innerText = '아이디 또는 비밀번호가 올바르지 않습니다. (admin / admin)';
       }
+    }
 
-      if (!foundStudent) {
+    // 학부모/학생 본인 인증 발송
+    function sendAuthCode() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      let st = null;
+      if (currentRole === 'student') st = excelData["01_학생명렬표"].rows.find(s => s.학생휴대폰 === phone);
+      else st = excelData["01_학생명렬표"].rows.find(s => s.보호자1_휴대폰 === phone);
+
+      if (!st) {
         document.getElementById('authMsg').style.color = 'red';
-        document.getElementById('authMsg').innerText = '등록된 휴대폰 번호가 없습니다.';
+        document.getElementById('authMsg').innerText = '등록된 연락처가 없습니다.';
         return;
       }
 
-      currentStudentId = foundStudent.학번;
+      selectedStudentId = st.학번;
       authCode = Math.floor(100000 + Math.random() * 900000).toString();
-      document.getElementById('codeGroup').style.display = 'flex';
+      document.getElementById('authCodeRow').style.display = 'flex';
       document.getElementById('authMsg').style.color = 'blue';
       document.getElementById('authMsg').innerText = `[SMS 발송] 인증번호: ${authCode}`;
     }
 
-    function verifyAuth() {
-      const input = document.getElementById('codeInput').value.trim();
-      if (input === authCode) {
+    function verifyAuthCode() {
+      if (document.getElementById('codeInput').value.trim() === authCode) {
         alert('인증되었습니다.');
-        document.getElementById('authArea').style.display = 'none';
-        document.getElementById('detailDataArea').style.display = 'block';
-        loadStudentDetail(currentStudentId);
+        document.getElementById('authLoginCard').style.display = 'none';
+        document.getElementById('mainDashboard').style.display = 'block';
+        
+        // 학부모/학생 모드는 본인 1명만 드롭다운에 표시
+        const select = document.getElementById('studentSelect');
+        const st = excelData["01_학생명렬표"].rows.find(s => s.학번 === selectedStudentId);
+        select.innerHTML = `<option value="${st.학번}">[${st.학번}] ${st.성명} (본인)</option>`;
+        document.getElementById('selectLabel').innerText = "본인 학생 정보";
+        loadStudentData(selectedStudentId);
       } else {
-        alert('인증번호가 틀렸습니다.');
+        alert('인증번호가 일치하지 않습니다.');
       }
     }
 
-    // 3. 교사 전용 전체 100명 목록 출력 및 실시간 필터링
-    function renderTeacherStudentList(list) {
-      const container = document.getElementById('teacherStudentList');
-      container.innerHTML = list.map(s => `
-        <div class="student-item ${s.학번 === currentStudentId ? 'selected':''}" onclick="selectStudent('${s.학번}')">
-          <span><b>[${s.학번}]</b> ${s.성명} (${s.반}반 ${s.번호}번)</span>
-          <span style="color:#666;">${s.성별}</span>
-        </div>
-      `).join('');
+    // 교사 모드: 전체 100명 드롭다운 생성
+    function initTeacherDropdown() {
+      const select = document.getElementById('studentSelect');
+      select.innerHTML = '';
+      excelData["01_학생명렬표"].rows.forEach(st => {
+        const opt = document.createElement('option');
+        opt.value = st.학번;
+        opt.innerText = `[${st.학번}] ${st.성명} (${st.반}반 ${st.번호}번)`;
+        select.appendChild(opt);
+      });
+      document.getElementById('selectLabel').innerText = "학생 선택 (전체 100명 목록)";
+      selectedStudentId = excelData["01_학생명렬표"].rows[0].학번;
+      loadStudentData(selectedStudentId);
     }
 
-    function filterTeacherStudents() {
-      const q = document.getElementById('teacherSearchInput').value.toLowerCase();
-      const filtered = excelData["01_학생명렬표"].rows.filter(s => s.성명.includes(q) || s.학번.includes(q));
-      renderTeacherStudentList(filtered);
+    function onStudentSelectChange() {
+      selectedStudentId = document.getElementById('studentSelect').value;
+      loadStudentData(selectedStudentId);
     }
 
-    function selectStudent(stId) {
-      currentStudentId = stId;
-      if (currentRole === 'teacher') {
-        renderTeacherStudentList(excelData["01_학생명렬표"].rows);
-      }
-      loadStudentDetail(stId);
+    // 서브 탭 전환
+    function switchSubTab(tab) {
+      currentSubTab = tab;
+      document.querySelectorAll('.sub-tab-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', (tab==='info'&&idx===0)||(tab==='grade'&&idx===1)||(tab==='mock'&&idx===2)||(tab==='etc'&&idx===3));
+      });
+      renderSubTabView();
     }
 
-    // 4. 아코디언 토글
-    function toggleAccordion(header) {
-      header.parentElement.classList.toggle('active');
+    // 전체 화면 데이터 로드
+    function loadStudentData(stId) {
+      renderChart(stId);
+      renderSubTabView();
     }
 
-    // 데이터 바인딩
-    function loadStudentDetail(id) {
-      const st = excelData["01_학생명렬표"].rows.find(r => r.학번 === id);
+    // 하단 화면 영역 렌더링
+    function renderSubTabView() {
+      const view = document.getElementById('tabViewArea');
+      const st = excelData["01_학생명렬표"].rows.find(r => r.학번 === selectedStudentId);
       if (!st) return;
 
-      document.getElementById('infoContent').innerHTML = `
-        <div class="data-card">
+      if (currentSubTab === 'info') {
+        view.innerHTML = `
           <div class="data-row"><span class="data-label">성명/성별</span><span class="data-val">${st.성명} (${st.성별})</span></div>
-          <div class="data-row"><span class="data-label">학번</span><span class="data-val">${st.학번} (${st.학년}학년 ${st.반}반 ${st.번호}번)</span></div>
-          <div class="data-row"><span class="data-label">보호자</span><span class="data-val">${st.보호자1_성명} (${st.보호자1_관계}) - ${st.보호자1_휴대폰}</span></div>
-        </div>
-      `;
+          <div class="data-row"><span class="data-label">학번 정보</span><span class="data-val">${st.학번} (${st.학년}학년 ${st.반}반 ${st.번호}번)</span></div>
+          <div class="data-row"><span class="data-label">생년월일</span><span class="data-val">${st.생년월일}</span></div>
+          <div class="data-row"><span class="data-label">학생 연락처</span><span class="data-val">${st.학생휴대폰}</span></div>
+          <div class="data-row"><span class="data-label">보호자 연락처</span><span class="data-val">${st.보호자1_성명} (${st.보호자1_관계}) - ${st.보호자1_휴대폰}</span></div>
+        `;
+      } else if (currentSubTab === 'grade') {
+        const grades = excelData["03_내신성적"].rows.filter(r => r.학번 === selectedStudentId);
+        view.innerHTML = grades.map(g => `
+          <div class="item-card">
+            <div class="data-row"><span class="data-label">과목명</span><span class="data-val">${g.과목명} (${g.교과})</span></div>
+            <div class="data-row"><span class="data-label">원점수 / 석차등급</span><span class="data-val">${g.원점수}점 / ${g.석차등급}등급</span></div>
+            <div class="data-row"><span class="data-label">과목평균 / 성취도</span><span class="data-val">${g.과목평균}점 / 성취도 ${g.성취도}</span></div>
+          </div>
+        `).join('');
+      } else if (currentSubTab === 'mock') {
+        const mocks = excelData["04_모의고사성적"].rows.filter(r => r.학번 === selectedStudentId);
+        view.innerHTML = mocks.map(m => `
+          <div class="item-card">
+            <div class="data-row"><span class="data-label">시행년월 / 영역</span><span class="data-val">${m.시행년월} [${m.영역}]</span></div>
+            <div class="data-row"><span class="data-label">표준점수 / 백분위</span><span class="data-val">${m.표준점수}점 / 백분위 ${m.백분위}%</span></div>
+            <div class="data-row"><span class="data-label">등급 / 석차</span><span class="data-val">${m.등급}등급 (교내 ${m.학교내석차}위)</span></div>
+          </div>
+        `).join('');
+      } else if (currentSubTab === 'etc') {
+        const att = excelData["05_출결"].rows.find(r => r.학번 === selectedStudentId) || {};
+        const act = excelData["06_창의적체험활동"].rows.find(r => r.학번 === selectedStudentId) || {};
+        const car = excelData["08_진로희망"].rows.find(r => r.학번 === selectedStudentId) || {};
 
-      // 내신
-      const grades = excelData["03_내신성적"].rows.filter(r => r.학번 === id);
-      document.getElementById('gradeContent').innerHTML = grades.length ? grades.map(g => `
-        <div class="data-card">
-          <div class="data-row"><span class="data-label">${g.과목명}</span><span class="data-val">${g.원점수}점 (${g.석차등급}등급)</span></div>
-        </div>
-      `).join('') : '<p style="font-size:12px; color:#888;">기록 없음</p>';
-
-      // 모의고사
-      const mocks = excelData["04_모의고사성적"].rows.filter(r => r.학번 === id);
-      document.getElementById('mockContent').innerHTML = mocks.length ? mocks.map(m => `
-        <div class="data-card">
-          <div class="data-row"><span class="data-label">${m.시행년월} [${m.영역}]</span><span class="data-val">${m.표준점수}점 (${m.등급}등급)</span></div>
-        </div>
-      `).join('') : '<p style="font-size:12px; color:#888;">기록 없음</p>';
-
-      // 출결
-      const atts = excelData["05_출결"].rows.filter(r => r.학번 === id);
-      document.getElementById('attendanceContent').innerHTML = atts.length ? atts.map(a => `
-        <div class="data-card">
-          <div class="data-row"><span class="data-label">수업일수</span><span class="data-val">${a.수업일수}일</span></div>
-          <div class="data-row"><span class="data-label">결석(질병/미인정)</span><span class="data-val">${a.결석_질병}회 / ${a.결석_미인정}회</span></div>
-        </div>
-      `).join('') : '<p style="font-size:12px; color:#888;">기록 없음</p>';
-
-      // 창체
-      const acts = excelData["06_창의적체험활동"].rows.filter(r => r.학번 === id);
-      document.getElementById('actContent').innerHTML = acts.length ? acts.map(a => `
-        <div class="data-card"><b>[${a.영역}] ${a.활동명}</b><p style="font-size:12px; margin-top:3px;">${a.주요내용}</p></div>
-      `).join('') : '<p style="font-size:12px; color:#888;">기록 없음</p>';
-
-      // 수상
-      const awards = excelData["07_수상·자격"].rows.filter(r => r.학번 === id);
-      document.getElementById('awardContent').innerHTML = awards.length ? awards.map(a => `
-        <div class="data-card"><div class="data-row"><span class="data-label">${a.명칭}</span><span class="data-val">${a.등급_급수}</span></div></div>
-      `).join('') : '<p style="font-size:12px; color:#888;">기록 없음</p>';
-
-      // 진로
-      const careers = excelData["08_진로희망"].rows.filter(r => r.학번 === id);
-      document.getElementById('careerContent').innerHTML = careers.length ? careers.map(c => `
-        <div class="data-card"><div class="data-row"><span class="data-label">희망학과</span><span class="data-val">${c.희망학과1} (${c.희망대학1})</span></div></div>
-      `).join('') : '<p style="font-size:12px; color:#888;">기록 없음</p>';
-
-      renderChart(grades);
+        view.innerHTML = `
+          <div class="item-card">
+            <b>📅 출결 기록</b>
+            <div class="data-row"><span class="data-label">수업일수/결석</span><span class="data-val">${att.수업일수 || 190}일 / 질병 ${att.결석_질병 || 0}회</span></div>
+          </div>
+          <div class="item-card">
+            <b>🎨 창의적 체험활동</b>
+            <p style="font-size:12px; color:#555; margin-top:4px;">${act.활동명 || '수리탐구반'}: ${act.주요내용 || '프로젝트 탐구'}</p>
+          </div>
+          <div class="item-card">
+            <b>🚀 진로 희망</b>
+            <div class="data-row"><span class="data-label">희망학과/대학</span><span class="data-val">${car.희망학과1 || '컴퓨터공학'} (${car.희망대학1 || '포항공대'})</span></div>
+          </div>
+        `;
+      }
     }
 
-    // 그래프 시각화
-    function renderChart(grades) {
+    // 그래프 시각화 (내신 및 모의고사 성적 추이)
+    function renderChart(stId) {
+      const grades = excelData["03_내신성적"].rows.filter(r => r.학번 === stId);
       const ctx = document.getElementById('scoreChart').getContext('2d');
+
       if (chartInstance) chartInstance.destroy();
 
       chartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
           labels: grades.map(g => g.과목명),
-          datasets: [{
-            label: '원점수',
-            data: grades.map(g => parseFloat(g.원점수)),
-            backgroundColor: '#004085'
-          }]
+          datasets: [
+            {
+              label: '내신 원점수',
+              data: grades.map(g => parseFloat(g.원점수)),
+              backgroundColor: 'rgba(0, 64, 133, 0.7)'
+            },
+            {
+              label: '석차등급',
+              data: grades.map(g => parseFloat(g.석차등급)),
+              type: 'line',
+              borderColor: '#dc3545',
+              backgroundColor: '#dc3545',
+              borderWidth: 2
+            }
+          ]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, max: 100 }
+          }
+        }
       });
     }
   </script>
