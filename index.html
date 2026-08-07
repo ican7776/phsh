@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>학생·성적 종합 정보시스템</title>
+  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -12,7 +13,7 @@
     header { background: #004085; color: white; padding: 14px; text-align: center; font-size: 18px; font-weight: bold; }
     .container { padding: 12px; max-width: 600px; margin: 0 auto; }
 
-    /* 1. 최상단 역할 구분 탭 (교사 / 학부모 / 학생) */
+    /* 최상단 역할 구분 탭 (교사 / 학부모 / 학생) */
     .top-role-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
     .role-btn { flex: 1; padding: 12px; border: 1px solid #ccc; background: #e9ecef; font-size: 15px; font-weight: bold; color: #495057; border-radius: 6px; cursor: pointer; text-align: center; }
     .role-btn.active { background: #004085; color: white; border-color: #004085; }
@@ -25,19 +26,19 @@
     .btn { padding: 10px 14px; background: #004085; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
     .btn-green { background: #28a745; }
 
-    /* 2. 학생 선택 드롭다운 (스케치 반영) */
+    /* 학생 선택 드롭다운 */
     .student-dropdown-box { background: white; padding: 12px; border-radius: 8px; border: 1px solid #004085; margin-bottom: 12px; }
     .student-dropdown-box label { font-size: 12px; font-weight: bold; color: #004085; display: block; margin-bottom: 4px; }
     .student-select { width: 100%; padding: 10px; font-size: 15px; font-weight: bold; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
 
-    /* 3. 성적 추이 그래프 영역 (스케치 반영) */
-    .graph-card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 12px; }
-    .graph-title { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 8px; text-align: center; }
-    .chart-container { width: 100%; height: 210px; }
+    /* 💡 중요: 성적 추이 그래프 영역 (기본 숨김: display: none) */
+    .graph-card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 12px; display: none; }
+    .graph-title { font-size: 14px; font-weight: bold; color: #004085; margin-bottom: 8px; text-align: center; }
+    .chart-container { position: relative; width: 100%; height: 220px; }
 
-    /* 4. 각각의 기능 탭 (스케치 서브 탭 반영) */
+    /* 기능 서브 탭 */
     .sub-tabs { display: flex; background: #e9ecef; border-bottom: 2px solid #004085; border-radius: 6px 6px 0 0; overflow-x: auto; }
-    .sub-tab-btn { flex: 1; min-width: 80px; padding: 10px 6px; font-size: 12px; font-weight: bold; border: none; background: transparent; color: #555; cursor: pointer; text-align: center; white-space: nowrap; }
+    .sub-tab-btn { flex: 1; min-width: 80px; padding: 10px 6px; font-size: 13px; font-weight: bold; border: none; background: transparent; color: #555; cursor: pointer; text-align: center; white-space: nowrap; }
     .sub-tab-btn.active { background: #004085; color: white; border-radius: 6px 6px 0 0; }
 
     /* 하단 화면 영역 */
@@ -55,14 +56,14 @@
 
   <div class="container">
 
-    <!-- 1. 스케치 최상단 메뉴: [교사] [학부모] [학생] -->
+    <!-- 최상단 메뉴: [교사] [학부모] [학생] -->
     <div class="top-role-tabs">
       <button class="role-btn active" onclick="selectRole('teacher')">교사</button>
       <button class="role-btn" onclick="selectRole('parent')">학부모</button>
       <button class="role-btn" onclick="selectRole('student')">학생</button>
     </div>
 
-    <!-- 교사 전용 ID/PW 로그인 영역 -->
+    <!-- 교사 로그인 카드 -->
     <div id="teacherLoginCard" class="card">
       <h3>🔒 교사 로그인 (관리자 전용)</h3>
       <div class="input-row">
@@ -73,7 +74,7 @@
       <p id="loginMsg" style="font-size:12px; color:red; margin-top:5px;"></p>
     </div>
 
-    <!-- 학부모/학생 본인인증 로그인 영역 -->
+    <!-- 학부모/학생 본인인증 카드 -->
     <div id="authLoginCard" class="card" style="display:none;">
       <h3 id="authTitle">본인 인증</h3>
       <div class="input-row">
@@ -87,26 +88,26 @@
       <p id="authMsg" style="font-size:12px; margin-top:5px;"></p>
     </div>
 
-    <!-- 로그인 성공 후 나타나는 데이터 조회 전체 메인 화면 -->
+    <!-- 로그인 성공 후 전체 대시보드 -->
     <div id="mainDashboard" style="display:none;">
 
-      <!-- 2. 스케치 드롭다운 메뉴: [학생기본정보 ▾] -->
+      <!-- 학생 선택 드롭다운 -->
       <div class="student-dropdown-box">
-        <label id="selectLabel">학생 선택 (100명 목록)</label>
+        <label id="selectLabel">학생 선택 (전체 100명 목록)</label>
         <select id="studentSelect" class="student-select" onchange="onStudentSelectChange()">
           <!-- 동적 학생 목록 -->
         </select>
       </div>
 
-      <!-- 3. 스케치 성적 추이 그래프 영역 -->
-      <div class="graph-card">
-        <div class="graph-title">📈 성적 추이 그래프 (내신 / 모의고사)</div>
+      <!-- 성적 추이 그래프 영역 (내신/모의고사 탭 클릭 시에만 display: block 처리) -->
+      <div class="graph-card" id="graphCard">
+        <div class="graph-title" id="graphTitle">📈 성적 추이 그래프</div>
         <div class="chart-container">
           <canvas id="scoreChart"></canvas>
         </div>
       </div>
 
-      <!-- 4. 스케치 각각의 기능 탭 & 하단 화면 영역 -->
+      <!-- 기능 서브 탭 -->
       <div class="sub-tabs">
         <button class="sub-tab-btn active" onclick="switchSubTab('info')">학생기본정보</button>
         <button class="sub-tab-btn" onclick="switchSubTab('grade')">내신성적</button>
@@ -114,10 +115,8 @@
         <button class="sub-tab-btn" onclick="switchSubTab('etc')">출결/창체/진로</button>
       </div>
 
-      <!-- 하단 화면 전환 표시 영역 -->
-      <div class="tab-view-card" id="tabViewArea">
-        <!-- 탭 클릭 시 내용 동적 변경 -->
-      </div>
+      <!-- 하단 화면 영역 -->
+      <div class="tab-view-card" id="tabViewArea"></div>
 
     </div>
 
@@ -136,7 +135,6 @@
       selectRole('teacher');
     };
 
-    // 최상단 역할 선택 (교사 / 학부모 / 학생)
     function selectRole(role) {
       currentRole = role;
       document.querySelectorAll('.role-btn').forEach((btn, idx) => {
@@ -167,7 +165,6 @@
       }
     }
 
-    // 교사 전용 admin / admin 로그인
     function loginTeacher() {
       const id = document.getElementById('teacherId').value.trim();
       const pw = document.getElementById('teacherPw').value.trim();
@@ -182,7 +179,6 @@
       }
     }
 
-    // 학부모/학생 본인 인증 발송
     function sendAuthCode() {
       const phone = document.getElementById('phoneInput').value.trim();
       let st = null;
@@ -208,18 +204,16 @@
         document.getElementById('authLoginCard').style.display = 'none';
         document.getElementById('mainDashboard').style.display = 'block';
         
-        // 학부모/학생 모드는 본인 1명만 드롭다운에 표시
         const select = document.getElementById('studentSelect');
         const st = excelData["01_학생명렬표"].rows.find(s => s.학번 === selectedStudentId);
         select.innerHTML = `<option value="${st.학번}">[${st.학번}] ${st.성명} (본인)</option>`;
         document.getElementById('selectLabel').innerText = "본인 학생 정보";
-        loadStudentData(selectedStudentId);
+        switchSubTab('info');
       } else {
         alert('인증번호가 일치하지 않습니다.');
       }
     }
 
-    // 교사 모드: 전체 100명 드롭다운 생성
     function initTeacherDropdown() {
       const select = document.getElementById('studentSelect');
       select.innerHTML = '';
@@ -231,30 +225,44 @@
       });
       document.getElementById('selectLabel').innerText = "학생 선택 (전체 100명 목록)";
       selectedStudentId = excelData["01_학생명렬표"].rows[0].학번;
-      loadStudentData(selectedStudentId);
+      switchSubTab('info');
     }
 
     function onStudentSelectChange() {
       selectedStudentId = document.getElementById('studentSelect').value;
-      loadStudentData(selectedStudentId);
+      updateView();
     }
 
-    // 서브 탭 전환
+    // 💡 핵심 개선: 서브 탭 변경 시 그래프 상자 숨김/노출 및 차트 생성 제어
     function switchSubTab(tab) {
       currentSubTab = tab;
       document.querySelectorAll('.sub-tab-btn').forEach((btn, idx) => {
         btn.classList.toggle('active', (tab==='info'&&idx===0)||(tab==='grade'&&idx===1)||(tab==='mock'&&idx===2)||(tab==='etc'&&idx===3));
       });
+
+      const graphCard = document.getElementById('graphCard');
+
+      // '내신성적' 또는 '모의고사' 탭일 때만 그래프 상자를 열고 그래프 그리기
+      if (tab === 'grade' || tab === 'mock') {
+        graphCard.style.display = 'block';
+        // DOM 요소가 열린 후 그래프 렌더링을 위해 setTimeout 적용
+        setTimeout(() => {
+          renderChart(selectedStudentId, tab);
+        }, 50);
+      } else {
+        graphCard.style.display = 'none'; // 학생기본정보, 출결/창체/진로 탭에서는 상자 숨김
+      }
+
       renderSubTabView();
     }
 
-    // 전체 화면 데이터 로드
-    function loadStudentData(stId) {
-      renderChart(stId);
+    function updateView() {
       renderSubTabView();
+      if (currentSubTab === 'grade' || currentSubTab === 'mock') {
+        renderChart(selectedStudentId, currentSubTab);
+      }
     }
 
-    // 하단 화면 영역 렌더링
     function renderSubTabView() {
       const view = document.getElementById('tabViewArea');
       const st = excelData["01_학생명렬표"].rows.find(r => r.학번 === selectedStudentId);
@@ -308,41 +316,83 @@
       }
     }
 
-    // 그래프 시각화 (내신 및 모의고사 성적 추이)
-    function renderChart(stId) {
-      const grades = excelData["03_내신성적"].rows.filter(r => r.학번 === stId);
+    // 💡 차트 생성 함수 (내신/모의고사별 차트 시각화)
+    function renderChart(stId, tabType) {
       const ctx = document.getElementById('scoreChart').getContext('2d');
-
+      const graphTitle = document.getElementById('graphTitle');
       if (chartInstance) chartInstance.destroy();
 
-      chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: grades.map(g => g.과목명),
-          datasets: [
-            {
-              label: '내신 원점수',
-              data: grades.map(g => parseFloat(g.원점수)),
-              backgroundColor: 'rgba(0, 64, 133, 0.7)'
-            },
-            {
-              label: '석차등급',
-              data: grades.map(g => parseFloat(g.석차등급)),
-              type: 'line',
-              borderColor: '#dc3545',
-              backgroundColor: '#dc3545',
-              borderWidth: 2
+      if (tabType === 'grade') {
+        graphTitle.innerText = "📈 내신 과목별 성적 추이 (원점수 & 석차등급)";
+        const grades = excelData["03_내신성적"].rows.filter(r => r.학번 === stId);
+        
+        chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: grades.map(g => g.과목명),
+            datasets: [
+              {
+                label: '원점수',
+                data: grades.map(g => parseFloat(g.원점수)),
+                backgroundColor: 'rgba(0, 64, 133, 0.75)',
+                yAxisID: 'y'
+              },
+              {
+                label: '석차등급',
+                data: grades.map(g => parseFloat(g.석차등급)),
+                type: 'line',
+                borderColor: '#dc3545',
+                backgroundColor: '#dc3545',
+                borderWidth: 2,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true, max: 100, title: { display: true, text: '점수' } },
+              y1: { reverse: true, min: 1, max: 9, position: 'right', title: { display: true, text: '등급' }, grid: { drawOnChartArea: false } }
             }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: { beginAtZero: true, max: 100 }
           }
-        }
-      });
+        });
+      } else if (tabType === 'mock') {
+        graphTitle.innerText = "🎯 모의고사 회차별 성적 추이 (표준점수 & 등급)";
+        const mocks = excelData["04_모의고사성적"].rows.filter(r => r.학번 === stId);
+
+        chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: mocks.map(m => `${m.시행년월} [${m.영역}]`),
+            datasets: [
+              {
+                label: '표준점수',
+                data: mocks.map(m => parseFloat(m.표준점수)),
+                backgroundColor: 'rgba(40, 167, 69, 0.75)',
+                yAxisID: 'y'
+              },
+              {
+                label: '등급',
+                data: mocks.map(m => parseFloat(m.등급)),
+                type: 'line',
+                borderColor: '#ffc107',
+                backgroundColor: '#ffc107',
+                borderWidth: 2,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: false, min: 50, max: 150, title: { display: true, text: '표준점수' } },
+              y1: { reverse: true, min: 1, max: 9, position: 'right', title: { display: true, text: '등급' }, grid: { drawOnChartArea: false } }
+            }
+          }
+        });
+      }
     }
   </script>
 </body>
