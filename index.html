@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포항세화고등학교 성적조회 (데모)</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+:root{
+  --bg:#ffffff; --fg:#111827; --muted:#6b7280; --border:#d1d5db;
+  --primary:#2563eb; --soft:#f3f4f6; --radius:8px;
+  --g1:#1e3a8a; --g2:#1d4ed8; --g3:#3b82f6; --g4:#60a5fa;
+  --warn:#b45309; --bad:#b91c1c; --good:#15803d;
+  --font:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:15px;margin:20px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+h3{font-size:13px;margin:0 0 8px;color:var(--muted);font-weight:600}
+a{color:var(--primary)}
+.banner{background:#fffbeb;border:1px solid #fcd34d;color:#78350f;padding:10px 12px;border-radius:var(--radius);font-size:12.5px;margin-bottom:14px}
+.banner b{color:#7c2d12}
+.card{border:1px solid var(--border);border-radius:var(--radius);padding:14px;background:#fff}
+.grid{display:grid;gap:10px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:720px){.g2,.g3,.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.metric{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.metric .lab{font-size:12px;color:var(--muted)}
+.metric .val{font-size:26px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.metric .sub{font-size:12px;color:var(--muted);margin-top:2px}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:var(--font);background:#fff;color:var(--fg)}
+input:focus,select:focus{outline:2px solid var(--primary);outline-offset:-1px}
+button{padding:9px 14px;border:1px solid var(--primary);background:var(--primary);color:#fff;border-radius:6px;font-size:14px;font-family:var(--font);cursor:pointer;font-weight:600}
+button:hover{background:#1d4ed8}
+button.ghost{background:#fff;color:var(--fg);border-color:var(--border);font-weight:500}
+button.ghost:hover{background:var(--soft)}
+button:disabled{opacity:.5;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:left}
+th{background:var(--soft);font-weight:600;font-size:12px;color:#374151}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:hover{background:#f9fafb}
+.badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:11.5px;font-weight:600;border:1px solid}
+.b-1,.b-2{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
+.b-3,.b-4{background:#f0f9ff;color:#0369a1;border-color:#bae6fd}
+.b-5,.b-6{background:#f9fafb;color:#4b5563;border-color:#e5e7eb}
+.b-7,.b-8,.b-9{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+.mark{font-size:11.5px;color:var(--muted);border-top:1px solid var(--border);margin-top:20px;padding-top:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.hide{display:none}
+.pill{border:1px solid var(--border);border-radius:6px;padding:8px 12px;cursor:pointer;background:#fff;text-align:left;font-family:var(--font);font-size:14px;color:var(--fg);font-weight:500}
+.pill:hover{background:var(--soft)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:14px 0 12px;flex-wrap:wrap}
+.tab{padding:7px 12px;border:1px solid transparent;border-bottom:none;background:none;color:var(--muted);cursor:pointer;font-size:13.5px;font-family:var(--font);font-weight:500;border-radius:6px 6px 0 0}
+.tab[aria-selected=true]{color:var(--fg);border-color:var(--border);background:#fff;margin-bottom:-1px;font-weight:600}
+.bar{height:8px;background:var(--soft);border-radius:2px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--primary)}
+.err{color:var(--bad);font-size:12.5px;margin-top:6px}
+.ok{color:var(--good);font-size:12.5px;margin-top:6px}
+.codebox{background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:6px;font-family:ui-monospace,Menlo,monospace;font-size:13px;margin-top:8px}
+.codebox b{color:#fbbf24;font-size:18px;letter-spacing:3px}
+small{color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="banner">
+    <b>데모 사이트입니다.</b> 화면에 보이는 학생·보호자·교직원 100여 명은 모두 <b>컴퓨터가 만들어낸 가상 인물</b>이며 실존 인물과 무관합니다.
+    인증번호는 서버 없이 브라우저 안에서만 처리되므로 <b>실제 보안 기능이 없습니다.</b> 실제 학생 성적을 이 사이트에 넣지 마십시오.
+  </div>
+
+  <!-- ============ 로그인 ============ -->
+  <section id="loginView">
+    <h1>포항세화고등학교 성적조회</h1>
+    <p><small>등록된 학생·보호자·교직원 휴대폰 번호로만 접속할 수 있습니다. 회원가입은 없습니다.</small></p>
+
+    <div class="grid g2" style="margin-top:14px">
+      <div class="card">
+        <h3>1단계 · 휴대폰 인증</h3>
+        <label for="phone">휴대폰 번호</label>
+        <input id="phone" type="tel" placeholder="010-0000-0000" autocomplete="tel">
+        <div class="row" style="margin-top:8px">
+          <button id="sendBtn">인증번호 발송</button>
+          <button class="ghost" id="fillBtn">데모 계정 채우기</button>
+        </div>
+        <div id="sendMsg"></div>
+
+        <div id="otpArea" class="hide" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+          <label for="otp">인증번호 6자리</label>
+          <input id="otp" inputmode="numeric" maxlength="6" placeholder="000000">
+          <div class="row" style="margin-top:8px">
+            <button id="verifyBtn">확인</button>
+            <span id="timer"><small></small></span>
+          </div>
+          <div id="otpMsg"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>데모 접속 계정</h3>
+        <p><small>아래 번호를 눌러 바로 시험해 보십시오.</small></p>
+        <div id="acctList" class="grid" style="gap:6px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 프로필 선택 ============ -->
+  <section id="pickView" class="hide">
+    <h1>조회 대상 선택</h1>
+    <p><small>연결된 자녀가 두 명 이상입니다. 조회할 학생을 선택하십시오.</small></p>
+    <div id="pickList" class="grid g2" style="margin-top:12px"></div>
+    <div style="margin-top:12px"><button class="ghost" onclick="logout()">로그아웃</button></div>
+  </section>
+
+  <!-- ============ 성적 조회 ============ -->
+  <section id="appView" class="hide">
+    <div class="spread">
+      <div>
+        <h1 id="viewTitle">성적 조회</h1>
+        <div><small id="viewSub"></small></div>
+      </div>
+      <div class="row">
+        <button class="ghost" id="switchBtn" style="display:none">자녀 전환</button>
+        <button class="ghost" onclick="logout()">로그아웃</button>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <div id="panel"></div>
+
+    <div class="mark" id="mark"></div>
+  </section>
+
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+"use strict";
+var D = window.DEMO_DATA;
+
+/* ---------- 유틸 ---------- */
+function tab2obj(t){
+  return t.rows.map(function(r){
+    var o={}; t.keys.forEach(function(k,i){o[k]=r[i];}); return o;
+  });
+}
+var STU   = tab2obj(D.students);
+var NAE   = tab2obj(D.naeshin);
+var MOCK  = tab2obj(D.mock);
+var STAFF = tab2obj(D.staff);
+
+var byId = {}; STU.forEach(function(s){ byId[s.id]=s; });
+var naeBy = {}, mockBy = {};
+NAE.forEach(function(r){ (naeBy[r.id]=naeBy[r.id]||[]).push(r); });
+MOCK.forEach(function(r){ (mockBy[r.id]=mockBy[r.id]||[]).push(r); });
+
+function norm(p){ return String(p||"").replace(/[^0-9]/g,""); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function avg(a){ return a.length? a.reduce(function(x,y){return x+y;},0)/a.length : 0; }
+function f1(n){ return (Math.round(n*10)/10).toFixed(1); }
+function gb(g){ return '<span class="badge b-'+g+'">'+g+'등급</span>'; }
+function $(id){ return document.getElementById(id); }
+
+/* ---------- 인증 (데모: 브라우저 내에서만) ---------- */
+var session = null, pending = null, timerH = null;
+
+function lookup(phone){
+  var p = norm(phone);
+  if(p.length < 10) return null;
+  var kids = STU.filter(function(s){ return norm(s.pphone)===p; });
+  if(kids.length) return {role:"parent", name:kids[0].pname, students:kids.map(function(s){return s.id;})};
+  var me = STU.filter(function(s){ return norm(s.sphone)===p; });
+  if(me.length) return {role:"student", name:me[0].name, students:[me[0].id]};
+  var t = STAFF.filter(function(s){ return norm(s.phone)===p; });
+  if(t.length){
+    var st=t[0];
+    if(st.role==="admin") return {role:"admin", name:st.name, students:STU.map(function(s){return s.id;})};
+    if(st.role==="homeroom"){
+      var kid = STU.filter(function(s){ return s.grade==st.hg && s.klass==st.hk; });
+      return {role:"homeroom", name:st.name, hg:st.hg, hk:st.hk, students:kid.map(function(s){return s.id;})};
+    }
+    return {role:"teacher", name:st.name, students:[]};
+  }
+  return null;
+}
+
+$("sendBtn").onclick = function(){
+  var phone = $("phone").value.trim();
+  var msg = $("sendMsg");
+  if(norm(phone).length < 10){ msg.className="err"; msg.textContent="휴대폰 번호를 정확히 입력하십시오."; return; }
+  var found = lookup(phone);
+  var code = String(Math.floor(100000+Math.random()*900000));
+  pending = { phone: phone, code: code, found: found, exp: Date.now()+180000 };
+  msg.className="";
+  msg.innerHTML = '<div class="codebox">데모 인증번호 &nbsp;<b>'+code+'</b><br>'+
+    '<small style="color:#94a3b8">실제 운영에서는 SMS로 발송되며 화면에 표시되지 않습니다.</small></div>';
+  $("otpArea").classList.remove("hide");
+  $("otp").value=""; $("otpMsg").textContent=""; $("otp").focus();
+  clearInterval(timerH);
+  timerH = setInterval(function(){
+    var left = Math.max(0, Math.floor((pending.exp-Date.now())/1000));
+    $("timer").innerHTML = '<small>유효시간 '+Math.floor(left/60)+':'+String(left%60).padStart(2,"0")+'</small>';
+    if(left<=0){ clearInterval(timerH); pending=null; }
+  }, 500);
+};
+
+$("verifyBtn").onclick = function(){
+  var msg = $("otpMsg");
+  var v = $("otp").value.trim();
+  if(!pending || Date.now()>pending.exp){ msg.className="err"; msg.textContent="인증번호가 만료되었습니다. 다시 발송하십시오."; return; }
+  if(v !== pending.code){ msg.className="err"; msg.textContent="인증번호가 일치하지 않습니다."; return; }
+  if(!pending.found){
+    msg.className="err";
+    msg.textContent="학교에 등록되지 않은 번호입니다. 담임 선생님께 문의하십시오.";
+    return;
+  }
+  if(pending.found.role === "teacher"){
+    msg.className="err"; msg.textContent="담임이 아닌 교과 교사는 이 데모에서 조회 대상이 없습니다.";
+    return;
+  }
+  session = pending.found; pending=null; clearInterval(timerH);
+  $("loginView").classList.add("hide");
+  if(session.role==="parent" && session.students.length>1){ renderPick(); }
+  else { openApp(session.students[0]); }
+};
+
+$("otp").addEventListener("keydown", function(e){ if(e.key==="Enter") $("verifyBtn").click(); });
+$("phone").addEventListener("keydown", function(e){ if(e.key==="Enter") $("sendBtn").click(); });
+
+window.logout = function(){
+  session=null; pending=null; clearInterval(timerH);
+  $("appView").classList.add("hide"); $("pickView").classList.add("hide");
+  $("loginView").classList.remove("hide");
+  $("otpArea").classList.add("hide"); $("sendMsg").innerHTML=""; $("phone").value="";
+  window.scrollTo(0,0);
+};
+
+/* ---------- 데모 계정 목록 ---------- */
+var accts = (function(){
+  var out=[];
+  var sib = {};
+  STU.forEach(function(s){ (sib[norm(s.pphone)]=sib[norm(s.pphone)]||[]).push(s); });
+  var multi = Object.keys(sib).filter(function(k){ return sib[k].length>1; });
+  if(multi.length){
+    var m = sib[multi[0]];
+    out.push({t:"학부모 · 자녀 2명", p:m[0].pphone, d:m.map(function(s){return s.name;}).join(", ")});
+  }
+  var one = STU.find(function(s){ return sib[norm(s.pphone)].length===1; });
+  out.push({t:"학부모 · 자녀 1명", p:one.pphone, d:one.name+" 보호자"});
+  out.push({t:"학생 본인", p:one.sphone, d:one.name+" ("+one.grade+"-"+one.klass+")"});
+  var hr = STAFF.filter(function(s){ return s.role==="homeroom"; })[0];
+  out.push({t:"담임 교사", p:hr.phone, d:hr.name+" ("+hr.hg+"학년 "+hr.hk+"반)"});
+  var ad = STAFF.filter(function(s){ return s.role==="admin"; })[0];
+  out.push({t:"관리자", p:ad.phone, d:ad.name+" ("+ad.pos+")"});
+  out.push({t:"미등록 번호 (차단 확인)", p:"010-0000-0000", d:"접속이 거부되어야 정상"});
+  return out;
+})();
+
+$("acctList").innerHTML = accts.map(function(a,i){
+  return '<button class="pill" data-p="'+esc(a.p)+'">'+
+    '<div style="font-weight:600">'+esc(a.t)+'</div>'+
+    '<div><small>'+esc(a.p)+' · '+esc(a.d)+'</small></div></button>';
+}).join("");
+$("acctList").addEventListener("click", function(e){
+  var b = e.target.closest("button[data-p]"); if(!b) return;
+  $("phone").value = b.getAttribute("data-p");
+  $("sendBtn").click();
+  $("phone").scrollIntoView({block:"center"});
+});
+$("fillBtn").onclick = function(){ $("phone").value = accts[0].p; $("sendBtn").click(); };
+
+/* ---------- 프로필 선택 ---------- */
+function renderPick(){
+  $("pickView").classList.remove("hide");
+  $("pickList").innerHTML = session.students.map(function(id){
+    var s = byId[id];
+    return '<button class="pill" data-id="'+id+'"><div style="font-weight:600;font-size:15px">'+esc(s.name)+'</div>'+
+      '<div><small>'+s.grade+'학년 '+s.klass+'반 '+s.no+'번 · 학번 '+s.id+'</small></div></button>';
+  }).join("");
+  $("pickList").onclick = function(e){
+    var b=e.target.closest("button[data-id]"); if(!b) return;
+    $("pickView").classList.add("hide"); openApp(b.getAttribute("data-id"));
+  };
+}
+
+/* ---------- 앱 ---------- */
+var curStudent=null, curTab=0;
+function openApp(sid){
+  curStudent = sid; curTab = 0;
+  $("appView").classList.remove("hide");
+  $("switchBtn").style.display = (session.role==="parent" && session.students.length>1) ? "" : "none";
+  $("switchBtn").onclick = function(){ $("appView").classList.add("hide"); renderPick(); };
+  var roleName = {parent:"학부모",student:"학생",homeroom:"담임교사",admin:"관리자"}[session.role];
+  $("viewTitle").textContent = D.school;
+  $("viewSub").textContent = roleName + " " + session.name + " 님 · 열람 가능 학생 " + session.students.length + "명";
+  var now = new Date();
+  $("mark").textContent = "열람자 " + session.name + "(" + roleName + ") · 열람시각 " +
+    now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0")+" "+
+    String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0") +
+    " · 모든 조회 기록은 감사로그에 남습니다. 화면 촬영·유출 시 책임이 따릅니다.";
+  buildTabs();
+}
+
+function buildTabs(){
+  var list = [{k:"summary",t:"성적 요약"},{k:"nae",t:"내신 상세"},{k:"mock",t:"모의고사 추이"}];
+  if(session.role==="homeroom"||session.role==="admin") list.push({k:"class",t:"학급 현황"});
+  $("tabs").innerHTML = list.map(function(x,i){
+    return '<button class="tab" role="tab" aria-selected="'+(i===curTab)+'" data-i="'+i+'">'+x.t+'</button>';
+  }).join("");
+  $("tabs").onclick = function(e){
+    var b=e.target.closest("button[data-i]"); if(!b) return;
+    curTab = +b.getAttribute("data-i"); buildTabs();
+  };
+  ({summary:renderSummary, nae:renderNae, mock:renderMock, "class":renderClass})[list[curTab].k]();
+}
+
+/* ---------- 탭1: 요약 ---------- */
+function renderSummary(){
+  var s = byId[curStudent];
+  var n = naeBy[curStudent]||[], m = mockBy[curStudent]||[];
+  var nAvg = avg(n.map(function(r){return r.g;}));
+  var mAvg = avg(m.map(function(r){return r.g;}));
+  var last = D.monOrder[D.monOrder.length-1];
+  var mLast = m.filter(function(r){return r.mon===last;});
+  var mLastAvg = avg(mLast.map(function(r){return r.g;}));
+  var prev = D.monOrder[D.monOrder.length-2];
+  var mPrev = m.filter(function(r){return r.mon===prev;});
+  var delta = avg(mPrev.map(function(r){return r.g;})) - mLastAvg;
+  var dtxt = delta>0.05 ? "▲ "+f1(delta)+" 상승" : (delta<-0.05 ? "▼ "+f1(-delta)+" 하락" : "변동 없음");
+  var dcol = delta>0.05 ? "var(--good)" : (delta<-0.05 ? "var(--bad)" : "var(--muted)");
+
+  var best = n.slice().sort(function(a,b){return a.g-b.g;})[0];
+  var worst= n.slice().sort(function(a,b){return b.g-a.g;})[0];
+
+  $("panel").innerHTML =
+   '<div class="card"><div class="spread"><div><div style="font-size:17px;font-weight:700">'+esc(s.name)+'</div>'+
+   '<small>'+s.grade+'학년 '+s.klass+'반 '+s.no+'번 · 학번 '+s.id+' · '+esc(s.sex)+'</small></div>'+
+   '<div style="text-align:right"><small>보호자 '+esc(s.pname)+' ('+esc(s.prel)+')</small></div></div></div>'+
+   '<div class="grid g4" style="margin-top:10px">'+
+     mcard("내신 평균등급", f1(nAvg), n.length+"개 과목 누적") +
+     mcard("모의 평균등급", f1(mAvg), m.length+"개 영역 누적") +
+     mcard(last+" 모의 평균", f1(mLastAvg), '<span style="color:'+dcol+'">'+prev+' 대비 '+dtxt+'</span>') +
+     mcard("최고 과목", best? best.g+"등급":"-", best? esc(best.sub)+" ("+esc(best.term)+")":"") +
+   '</div>'+
+   '<h2>과목별 내신 등급 분포</h2>'+ distBars(n) +
+   '<h2>보완이 필요한 과목</h2>'+
+   '<div class="card"><table><thead><tr><th>과목</th><th>학기</th><th class="num">원점수</th>'+
+   '<th class="num">과목평균</th><th class="num">석차</th><th class="num">등급</th></tr></thead><tbody>'+
+   n.slice().sort(function(a,b){return b.g-a.g;}).slice(0,5).map(function(r){
+     return '<tr><td>'+esc(r.sub)+'</td><td>'+esc(r.term)+'</td><td class="num">'+r.raw+'</td>'+
+       '<td class="num">'+r.avg+'</td><td class="num">'+r.rank+'/'+r.cnt+'</td><td class="num">'+gb(r.g)+'</td></tr>';
+   }).join("")+'</tbody></table></div>';
+}
+function mcard(lab,val,sub){
+  return '<div class="metric"><div class="lab">'+lab+'</div><div class="val">'+val+'</div><div class="sub">'+sub+'</div></div>';
+}
+function distBars(rows){
+  var cnt={}; for(var i=1;i<=9;i++) cnt[i]=0;
+  rows.forEach(function(r){ cnt[r.g]++; });
+  var mx = Math.max.apply(null, Object.keys(cnt).map(function(k){return cnt[k];})) || 1;
+  var html='<div class="card">';
+  for(var g=1; g<=9; g++){
+    html += '<div class="row" style="margin-bottom:5px"><div style="width:56px"><small>'+g+'등급</small></div>'+
+      '<div class="bar" style="flex:1"><i style="width:'+(cnt[g]/mx*100)+'%"></i></div>'+
+      '<div style="width:34px;text-align:right"><small>'+cnt[g]+'</small></div></div>';
+  }
+  return html+'</div>';
+}
+
+/* ---------- 탭2: 내신 ---------- */
+function renderNae(){
+  var n = (naeBy[curStudent]||[]).slice().sort(function(a,b){
+    return a.term===b.term ? a.g-b.g : (a.term<b.term?-1:1); });
+  var terms = {};
+  n.forEach(function(r){ (terms[r.term]=terms[r.term]||[]).push(r); });
+  var html = "";
+  Object.keys(terms).forEach(function(t){
+    var rows = terms[t];
+    var wsum = rows.reduce(function(a,r){return a+r.g*r.unit;},0);
+    var usum = rows.reduce(function(a,r){return a+r.unit;},0);
+    html += '<h2>'+esc(t)+' <small style="font-weight:400">· 이수단위 반영 평균 '+f1(wsum/usum)+'등급</small></h2>'+
+      '<div class="card"><table><thead><tr><th>과목</th><th class="num">단위</th><th class="num">원점수</th>'+
+      '<th class="num">과목평균</th><th class="num">표준편차</th><th class="num">석차/수강자</th><th class="num">등급</th></tr></thead><tbody>'+
+      rows.map(function(r){
+        return '<tr><td>'+esc(r.sub)+'</td><td class="num">'+r.unit+'</td><td class="num"><b>'+r.raw+'</b></td>'+
+          '<td class="num">'+r.avg+'</td><td class="num">'+r.sd+'</td>'+
+          '<td class="num">'+r.rank+'/'+r.cnt+'</td><td class="num">'+gb(r.g)+'</td></tr>';
+      }).join("")+'</tbody></table></div>';
+  });
+  $("panel").innerHTML = html || '<div class="card">내신 성적 자료가 없습니다.</div>';
+}
+
+/* ---------- 탭3: 모의고사 추이 (SVG) ---------- */
+function renderMock(){
+  var m = mockBy[curStudent]||[];
+  var subs = []; m.forEach(function(r){ if(subs.indexOf(r.sub)<0) subs.push(r.sub); });
+  var months = D.monOrder.filter(function(mo){ return m.some(function(r){return r.mon===mo;}); });
+  var series = subs.map(function(sub){
+    return { name: sub, pts: months.map(function(mo){
+      var hit = m.filter(function(r){ return r.sub===sub && r.mon===mo; });
+      return hit.length ? hit[0].g : null; }) };
+  });
+  var overall = months.map(function(mo){
+    return avg(m.filter(function(r){return r.mon===mo;}).map(function(r){return r.g;})); });
+
+  $("panel").innerHTML =
+    '<h2>전체 평균등급 추이</h2>'+ lineSVG(months, [{name:"평균", pts:overall}], true) +
+    '<h2>영역별 등급 추이</h2>'+ lineSVG(months, series, false) +
+    '<h2>회차별 상세</h2>'+
+    '<div class="card" style="overflow-x:auto"><table><thead><tr><th>영역</th>'+
+    months.map(function(mo){return '<th class="num">'+esc(mo)+'</th>';}).join("")+
+    '</tr></thead><tbody>'+
+    subs.map(function(sub){
+      return '<tr><td>'+esc(sub)+'</td>'+ months.map(function(mo){
+        var h = m.filter(function(r){return r.sub===sub&&r.mon===mo;})[0];
+        return '<td class="num">'+(h? gb(h.g)+' <small>'+h.raw+'점·'+h.pct+'%</small>' : '-')+'</td>';
+      }).join("")+'</tr>';
+    }).join("")+'</tbody></table></div>';
+}
+
+function lineSVG(labels, series, single){
+  var W=720, H=single?200:260, P={t:14,r:14,b:28,l:34};
+  var iw=W-P.l-P.r, ih=H-P.t-P.b;
+  var xs = labels.map(function(_,i){ return P.l + (labels.length===1? iw/2 : i*iw/(labels.length-1)); });
+  function y(g){ return P.t + (g-1)/8*ih; }   // 1등급 위, 9등급 아래
+  var colors = ["#1e3a8a","#1d4ed8","#3b82f6","#60a5fa","#93c5fd","#0369a1","#075985"];
+  var svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" role="img" aria-label="등급 추이 선그래프">';
+  for(var g=1; g<=9; g+=2){
+    svg += '<line x1="'+P.l+'" y1="'+y(g)+'" x2="'+(W-P.r)+'" y2="'+y(g)+'" stroke="#e5e7eb" stroke-width="1"/>'+
+           '<text x="'+(P.l-6)+'" y="'+(y(g)+4)+'" text-anchor="end" font-size="10" fill="#6b7280">'+g+'</text>';
+  }
+  labels.forEach(function(l,i){
+    svg += '<text x="'+xs[i]+'" y="'+(H-9)+'" text-anchor="middle" font-size="11" fill="#374151">'+esc(l)+'</text>';
+  });
+  series.forEach(function(s,si){
+    var c = single ? "#2563eb" : colors[si%colors.length];
+    var d = "", first=true;
+    s.pts.forEach(function(p,i){
+      if(p==null) return;
+      d += (first? "M":"L") + xs[i] + " " + y(p).toFixed(1) + " "; first=false;
+    });
+    svg += '<path d="'+d+'" fill="none" stroke="'+c+'" stroke-width="'+(single?2.5:1.8)+'" stroke-linejoin="round"/>';
+    s.pts.forEach(function(p,i){
+      if(p==null) return;
+      svg += '<circle cx="'+xs[i]+'" cy="'+y(p).toFixed(1)+'" r="'+(single?4:3)+'" fill="'+c+'"/>';
+      if(single) svg += '<text x="'+xs[i]+'" y="'+(y(p)-10)+'" text-anchor="middle" font-size="11" font-weight="600" fill="#111827">'+f1(p)+'</text>';
+    });
+  });
+  svg += '</svg>';
+  var legend = single ? "" : '<div class="row" style="margin-top:6px">'+ series.map(function(s,i){
+      return '<span style="font-size:11.5px;color:#374151"><i style="display:inline-block;width:10px;height:3px;background:'+
+        colors[i%colors.length]+';vertical-align:middle;margin-right:4px"></i>'+esc(s.name)+'</span>';
+    }).join("") + '</div>';
+  var mirror = '<div class="sr"><table><caption>등급 추이 데이터</caption><thead><tr><th>구분</th>'+
+    labels.map(function(l){return '<th>'+esc(l)+'</th>';}).join("")+'</tr></thead><tbody>'+
+    series.map(function(s){ return '<tr><td>'+esc(s.name)+'</td>'+
+      s.pts.map(function(p){return '<td>'+(p==null?"-":f1(p))+'</td>';}).join("")+'</tr>'; }).join("")+
+    '</tbody></table></div>';
+  return '<div class="card">'+svg+legend+mirror+'<div style="margin-top:6px"><small>세로축은 등급이며 위쪽이 1등급입니다.</small></div></div>';
+}
+
+/* ---------- 탭4: 학급 현황 ---------- */
+function renderClass(){
+  var ids = session.students;
+  var rows = ids.map(function(id){
+    var s = byId[id];
+    var n = naeBy[id]||[], m = mockBy[id]||[];
+    return { s:s, n:avg(n.map(function(r){return r.g;})), m:avg(m.map(function(r){return r.g;})) };
+  }).sort(function(a,b){ return a.n-b.n; });
+
+  var head = session.role==="admin" ? "전교생 " + rows.length + "명" :
+             session.hg + "학년 " + session.hk + "반 " + rows.length + "명";
+  var cAvg = avg(rows.map(function(r){return r.n;}));
+  var top = rows.filter(function(r){return r.n<=3;}).length;
+  var care= rows.filter(function(r){return r.n>=6;}).length;
+  var gap = rows.filter(function(r){return r.m - r.n >= 1.0;}).length;
+
+  var show = rows.slice(0, 40);
+  $("panel").innerHTML =
+    '<div class="grid g4">'+
+      mcard("조회 대상", rows.length+"명", head)+
+      mcard("내신 평균등급", f1(cAvg), "학급 전체 평균")+
+      mcard("상위권 (3등급 이내)", top+"명", Math.round(top/rows.length*100)+"%")+
+      mcard("관리 필요 (6등급 이하)", care+"명", "모의 대비 하락 "+gap+"명")+
+    '</div>'+
+    '<h2>학생별 내신·모의 평균등급</h2>'+
+    '<div class="card" style="overflow-x:auto"><table><thead><tr><th>순위</th><th>학생</th><th>학반</th>'+
+    '<th class="num">내신</th><th class="num">모의</th><th style="width:180px">내신 등급 막대</th><th>비고</th></tr></thead><tbody>'+
+    show.map(function(r,i){
+      var d = r.m - r.n;
+      var note = d>=1.0 ? '<span style="color:var(--warn)">모의 약세</span>' :
+                 (d<=-1.0 ? '<span style="color:var(--good)">모의 강세</span>' : '<small>-</small>');
+      return '<tr><td class="num">'+(i+1)+'</td><td><b>'+esc(r.s.name)+'</b></td>'+
+        '<td>'+r.s.grade+'-'+r.s.klass+'-'+r.s.no+'</td>'+
+        '<td class="num">'+f1(r.n)+'</td><td class="num">'+f1(r.m)+'</td>'+
+        '<td><div class="bar"><i style="width:'+((9-r.n)/8*100).toFixed(0)+'%"></i></div></td>'+
+        '<td>'+note+'</td></tr>';
+    }).join("")+'</tbody></table>'+
+    (rows.length>40 ? '<div style="margin-top:8px"><small>상위 40명만 표시했습니다.</small></div>' : '')+
+    '</div>';
+}
+
+})();
+</script>
+</body>
+</html>
