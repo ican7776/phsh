@@ -678,11 +678,10 @@
     <script>
         Chart.register(ChartDataLabels);
 
-        let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [
-            { name: '홍길동', year: '2026', dept: '교무기획부', password: null, hasPw: false },
-            { name: '김철수', year: '2026', dept: '학생생활부', password: null, hasPw: false },
-            { name: '이교사', year: '2026', dept: '행정실', password: null, hasPw: false }
-        ];
+        // 구글 시트 연동 데이터 전역 변수 선언
+        let schoolTasksV2 = [];
+        let registeredUsers = [];
+        
         let adminAccount = JSON.parse(localStorage.getItem('adminAccount')) || { id: 'admin', pw: '1234' };
         let currentUser = JSON.parse(sessionStorage.getItem('currentUser')) || null;
 
@@ -698,33 +697,6 @@
 
         let fileObjects = {};
 
-        let tasks = JSON.parse(localStorage.getItem('schoolTasksV2')) || [
-            {
-                id: '1',
-                name: '2학기 중간고사 출제 및 검토',
-                desc: '각 과목별 출제 위원은 1차 교정 후 담당 부서장의 승인을 받으시기 바랍니다.',
-                dept: '교무기획부',
-                assignee: '홍길동',
-                startDate: new Date(Date.now() - 3*86400000).toISOString().split('T')[0],
-                endDate: new Date(Date.now() + 4*86400000).toISOString().split('T')[0],
-                progress: 60,
-                files: ['시험범위안내.pdf'],
-                comments: [{ user: '홍길동', text: '1차 출제 작성 완료되었습니다.', date: '8/10 14:20' }]
-            },
-            {
-                id: '2',
-                name: '학생 봉사활동 실적 확인 및 입력',
-                desc: '1365 연계 제출서류 누락 여부를 철저히 확인 바랍니다.',
-                dept: '학생생활부',
-                assignee: '김철수',
-                startDate: new Date(Date.now() - 5*86400000).toISOString().split('T')[0],
-                endDate: new Date(Date.now() + 1*86400000).toISOString().split('T')[0],
-                progress: 30,
-                files: [],
-                comments: []
-            }
-        ];
-
         let pendingUserIndex = null;
         let currentOpenTaskId = null;
         let currentView = 'table';
@@ -736,33 +708,61 @@
         let statusChartInstance = null;
         let ganttCellWidth = 32;
 
-        window.onload = () => {
-            document.getElementById('noticeText').innerText = noticeTextData;
-            setupDragAndDrop();
+        // 구글 시트에서 서버 데이터를 읽어오는 로직 추가
+        function loadDataFromServer() {
+            // 1. 업무 데이터 가져오기
+            google.script.run.withSuccessHandler(function(data) {
+                schoolTasksV2 = data; 
+                // 2. 유저 데이터 가져오기
+                google.script.run.withSuccessHandler(function(userData) {
+                    registeredUsers = userData;
+                    
+                    // 데이터를 모두 가져온 후 초기 실행 화면 설정
+                    document.getElementById('noticeText').innerText = noticeTextData;
+                    setupDragAndDrop();
 
-            if (!currentUser) {
-                document.getElementById('loginOverlay').classList.remove('hidden');
-            } else {
-                document.getElementById('loginOverlay').classList.add('hidden');
-                initApp();
-            }
-
-            window.addEventListener('storage', (e) => {
-                if (['schoolTasksV2', 'broadcastNotifs', 'readNotifIds', 'deletedNotifIds', 'adminInbox'].includes(e.key)) {
-                    tasks = JSON.parse(localStorage.getItem('schoolTasksV2')) || [];
-                    broadcastNotifs = JSON.parse(localStorage.getItem('broadcastNotifs')) || [];
-                    readNotifIds = JSON.parse(localStorage.getItem('readNotifIds')) || [];
-                    deletedNotifIds = JSON.parse(localStorage.getItem('deletedNotifIds')) || [];
-                    adminInbox = JSON.parse(localStorage.getItem('adminInbox')) || [];
-                    updateNotifications();
-                    render();
-                    if(currentOpenTaskId) {
-                        const curTask = tasks.find(t => t.id === currentOpenTaskId);
-                        if(curTask) renderComments(curTask);
+                    if (!currentUser) {
+                        document.getElementById('loginOverlay').classList.remove('hidden');
+                    } else {
+                        document.getElementById('loginOverlay').classList.add('hidden');
+                        initApp();
                     }
+                }).getSheetData('users');
+            }).getSheetData('tasks');
+        }
+
+        // 페이지 로드 시 기존 localStorage 로직 대신 서버 데이터 수신 호출
+        window.addEventListener('DOMContentLoaded', loadDataFromServer);
+
+        // 업무 데이터 동기화 함수
+        function syncTasksToServer() {
+            google.script.run.withSuccessHandler(function(response) {
+                console.log("업무 동기화 상태:", response);
+            }).saveSheetData('tasks', schoolTasksV2);
+        }
+
+        // 회원 정보 동기화 함수
+        function syncUsersToServer() {
+            google.script.run.withSuccessHandler(function(response) {
+                console.log("유저 동기화 상태:", response);
+            }).saveSheetData('users', registeredUsers);
+        }
+
+        // 브라우저 탭 간 복제 변경 탐지 (기존 호환성 유지)
+        window.addEventListener('storage', (e) => {
+            if (['broadcastNotifs', 'readNotifIds', 'deletedNotifIds', 'adminInbox'].includes(e.key)) {
+                broadcastNotifs = JSON.parse(localStorage.getItem('broadcastNotifs')) || [];
+                readNotifIds = JSON.parse(localStorage.getItem('readNotifIds')) || [];
+                deletedNotifIds = JSON.parse(localStorage.getItem('deletedNotifIds')) || [];
+                adminInbox = JSON.parse(localStorage.getItem('adminInbox')) || [];
+                updateNotifications();
+                render();
+                if(currentOpenTaskId) {
+                    const curTask = schoolTasksV2.find(t => t.id === currentOpenTaskId);
+                    if(curTask) renderComments(curTask);
                 }
-            });
-        };
+            }
+        });
 
         function addLog(actionText) {
             const time = new Date().toLocaleString();
@@ -849,7 +849,7 @@
 
             registeredUsers[pendingUserIndex].password = p1;
             registeredUsers[pendingUserIndex].hasPw = true;
-            localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+            syncUsersToServer(); // 서버 시트 동기화 호출
 
             currentUser = { name: registeredUsers[pendingUserIndex].name, dept: registeredUsers[pendingUserIndex].dept, role: 'USER' };
             sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -895,7 +895,7 @@
                 if (!newP || newP !== confirmP) return alert('새 비밀번호 확인이 일치하지 않습니다.');
 
                 userObj.password = newP;
-                localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+                syncUsersToServer(); // 서버 시트 동기화 호출
                 alert('비밀번호가 변경되었습니다!');
                 addLog(`비밀번호 직접 변경 완료`);
                 closeChangePwModal();
@@ -960,7 +960,7 @@
         function getNotifList() {
             if(!currentUser) return [];
             const today = new Date().toISOString().split('T')[0];
-            const myTasks = (currentUser.role === 'ADMIN') ? tasks : tasks.filter(t => t.assignee === currentUser.name);
+            const myTasks = (currentUser.role === 'ADMIN') ? schoolTasksV2 : schoolTasksV2.filter(t => t.assignee === currentUser.name);
 
             let rawList = [];
 
@@ -1180,8 +1180,8 @@
             if (selectedIds.length === 0) return alert('삭제할 업무를 체크박스로 선택해주세요.');
 
             if (confirm(`선택한 ${selectedIds.length}개 업무를 삭제하시겠습니까?`)) {
-                tasks = tasks.filter(t => !selectedIds.includes(t.id));
-                localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
+                schoolTasksV2 = schoolTasksV2.filter(t => !selectedIds.includes(t.id));
+                syncTasksToServer(); // 서버 시트 동기화 호출
                 addLog(`선택 업무 ${selectedIds.length}건 삭제`);
                 updateNotifications();
                 render();
@@ -1194,8 +1194,8 @@
 
             if (confirm(`현재 화면에 표시된 ${filtered.length}건의 업무를 전체 삭제하시겠습니까?`)) {
                 const deleteIds = filtered.map(t => t.id);
-                tasks = tasks.filter(t => !deleteIds.includes(t.id));
-                localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
+                schoolTasksV2 = schoolTasksV2.filter(t => !deleteIds.includes(t.id));
+                syncTasksToServer(); // 서버 시트 동기화 호출
                 addLog(`업무 ${deleteIds.length}건 일괄 전체 삭제`);
                 updateNotifications();
                 render();
@@ -1324,7 +1324,7 @@
         function getUniqueDepartments() {
             const depts = new Set(['교무기획부', '학생생활부', '행정실']);
             registeredUsers.forEach(u => { if(u.dept) depts.add(u.dept); });
-            tasks.forEach(t => { if(t.dept) depts.add(t.dept); });
+            schoolTasksV2.forEach(t => { if(t.dept) depts.add(t.dept); });
             return Array.from(depts);
         }
 
@@ -1422,7 +1422,7 @@
         }
 
         function exportBackupExcel() {
-            const taskRows = tasks.map(t => ({
+            const taskRows = schoolTasksV2.map(t => ({
                 "ID": t.id,
                 "업무명": t.name,
                 "상세설명": t.desc || '',
@@ -1502,7 +1502,7 @@
                     const rawTasks = XLSX.utils.sheet_to_json(taskSheet);
                     const rawUsers = XLSX.utils.sheet_to_json(userSheet);
 
-                    tasks = rawTasks.map(t => ({
+                    schoolTasksV2 = rawTasks.map(t => ({
                         id: String(t["ID"] || Date.now()),
                         name: String(t["업무명"] || ''),
                         desc: String(t["상세설명"] || ''),
@@ -1523,8 +1523,8 @@
                         hasPw: u["비밀번호설정여부"] === "Y"
                     }));
 
-                    localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
-                    localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+                    syncTasksToServer(); // 서버 시트 동기화 호출
+                    syncUsersToServer(); // 서버 시트 동기화 호출
 
                     alert('엑셀 백업 데이터 복원이 완료되었습니다!');
                     addLog(`백업 데이터 복원 성공`);
@@ -1547,896 +1547,6 @@
             renderUserList();
             renderAdminInbox();
             renderAuditLogs();
-        }
-
-        function switchAdminSubTab(sub) {
-            const btnUsers = document.getElementById('tabUserListBtn');
-            const btnBroadcast = document.getElementById('tabBroadcastBtn');
-            const btnInbox = document.getElementById('tabAdminInboxBtn');
-            const btnLogs = document.getElementById('tabAuditLogBtn');
-
-            const secUsers = document.getElementById('adminUserTabSection');
-            const secBroadcast = document.getElementById('adminBroadcastTabSection');
-            const secInbox = document.getElementById('adminInboxTabSection');
-            const secLogs = document.getElementById('adminAuditLogTabSection');
-
-            secUsers.classList.add('hidden');
-            secBroadcast.classList.add('hidden');
-            secInbox.classList.add('hidden');
-            secLogs.classList.add('hidden');
-
-            btnUsers.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
-            btnBroadcast.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
-            btnInbox.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
-            btnLogs.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
-
-            if(sub === 'users') {
-                secUsers.classList.remove('hidden');
-                btnUsers.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
-            } else if(sub === 'broadcast') {
-                secBroadcast.classList.remove('hidden');
-                btnBroadcast.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
-            } else if(sub === 'inbox') {
-                secInbox.classList.remove('hidden');
-                btnInbox.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
-                renderAdminInbox();
-            } else {
-                secLogs.classList.remove('hidden');
-                btnLogs.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
-            }
-        }
-
-        function closeUserModal() {
-            const modal = document.getElementById('userModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            updateDeptSelects();
-            render();
-        }
-
-        function renderUserList() {
-            const list = document.getElementById('userListUI');
-            document.getElementById('userCount').innerText = registeredUsers.length;
-
-            list.innerHTML = registeredUsers.map((u, i) => `
-                <tr class="hover:bg-slate-50">
-                    <td class="p-2 font-bold text-slate-800">${u.name}</td>
-                    <td class="p-2 text-slate-500">${u.year}</td>
-                    <td class="p-2 text-indigo-700 font-medium">${u.dept || '-'}</td>
-                    <td class="p-2">
-                        ${u.hasPw 
-                            ? '<span class="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-bold text-[10px] whitespace-nowrap">설정완료</span>' 
-                            : '<span class="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded font-bold text-[10px] whitespace-nowrap">미설정</span>'}
-                    </td>
-                    <td class="p-2 text-right space-x-1 whitespace-nowrap">
-                        <button onclick="resetUserPw(${i})" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">초기화</button>
-                        <button onclick="deleteUser(${i})" class="text-[10px] bg-red-50 hover:bg-red-100 text-red-600 px-1.5 py-0.5 rounded"><i class="fa-solid fa-trash"></i></button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function addSingleUser() {
-            const name = document.getElementById('addUserName').value.trim();
-            const year = document.getElementById('addUserYear').value.trim();
-            const dept = document.getElementById('addUserDept').value.trim() || '교무기획부';
-
-            if (!name || !year) return alert('이름과 학년도를 모두 입력해주세요.');
-
-            if (registeredUsers.some(u => u.name === name && u.year === year)) {
-                return alert('이미 존재하는 회원입니다.');
-            }
-
-            registeredUsers.push({ name, year, dept, password: null, hasPw: false });
-            localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
-
-            addLog(`신규 회원 등록: ${name} (${dept})`);
-            document.getElementById('addUserName').value = '';
-            document.getElementById('addUserDept').value = '';
-            renderUserList();
-            updateDeptSelects();
-        }
-
-        function resetUserPw(idx) {
-            if (confirm(`${registeredUsers[idx].name} 회원의 비밀번호를 초기화하시겠습니까?`)) {
-                addLog(`회원 비밀번호 초기화: ${registeredUsers[idx].name}`);
-                registeredUsers[idx].password = null;
-                registeredUsers[idx].hasPw = false;
-                localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
-                renderUserList();
-            }
-        }
-
-        function deleteUser(idx) {
-            if (confirm(`${registeredUsers[idx].name} 회원을 삭제하시겠습니까?`)) {
-                addLog(`회원 삭제: ${registeredUsers[idx].name}`);
-                registeredUsers.splice(idx, 1);
-                localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
-                renderUserList();
-                updateDeptSelects();
-            }
-        }
-
-        function downloadTemplate() {
-            const data = [
-                ["이름", "학년도", "부서명"],
-                ["홍길동", "2026", "교무기획부"],
-                ["김철수", "2026", "학생생활부"]
-            ];
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "회원명단");
-            XLSX.writeFile(wb, "세화고_회원일괄등록양식_2026.xlsx");
-        }
-
-        function uploadExcelUsers() {
-            const fileInput = document.getElementById('excelFileInput');
-            if (!fileInput.files[0]) return alert('엑셀 파일을 선택해주세요.');
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
-
-                registeredUsers = [];
-
-                let addedCount = 0;
-                rows.forEach(row => {
-                    const name = row['이름'] || row['성명'];
-                    const year = String(row['학년도'] || '2026');
-                    const dept = row['부서명'] || row['부서'] || '교무기획부';
-
-                    if (name && !registeredUsers.some(u => u.name === name && u.year === year)) {
-                        registeredUsers.push({ name, year, dept, password: null, hasPw: false });
-                        addedCount++;
-                    }
-                });
-
-                localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
-                alert(`기존 회원 자료를 삭제하고, 새롭게 ${addedCount}명의 회원을 등록했습니다!`);
-                addLog(`엑셀로 회원 ${addedCount}명 덮어쓰기 등록`);
-                fileInput.value = '';
-                renderUserList();
-                updateDeptSelects();
-            };
-            reader.readAsArrayBuffer(fileInput.files[0]);
-        }
-
-        function downloadTaskTemplate() {
-            const todayStr = new Date().toISOString().split('T')[0];
-            const data = [
-                ["업무명", "상세설명", "부서", "담당자", "시작일", "마감일", "진행률(%)"],
-                ["2학기 교육과정 수립", "세부지침 참고", "교무기획부", "홍길동", todayStr, todayStr, "0"],
-                ["학생 안전점검 실시", "시설 점검표 작성", "학생생활부", "김철수", todayStr, todayStr, "20"]
-            ];
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "업무일괄등록");
-            XLSX.writeFile(wb, "세화고_업무일괄등록양식.xlsx");
-        }
-
-        function uploadExcelTasks() {
-            const fileInput = document.getElementById('taskExcelFileInput');
-            if (!fileInput.files[0]) return alert('엑셀 파일을 선택해주세요.');
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
-
-                tasks = [];
-
-                let addedCount = 0;
-                const todayStr = new Date().toISOString().split('T')[0];
-
-                rows.forEach(row => {
-                    const name = row['업무명'];
-                    const desc = row['상세설명'] || '';
-                    const dept = row['부서'] || (currentUser.dept || '교무기획부');
-                    const assignee = row['담당자'] || currentUser.name;
-                    const startDate = row['시작일'] ? String(row['시작일']).trim() : todayStr;
-                    const endDate = row['마감일'] ? String(row['마감일']).trim() : todayStr;
-                    const progress = row['진행률(%)'] !== undefined ? parseInt(row['진행률(%)']) : 0;
-
-                    if (name) {
-                        tasks.push({
-                            id: (Date.now() + Math.random()).toString(),
-                            name: String(name).trim(),
-                            desc: String(desc).trim(),
-                            dept: String(dept).trim(),
-                            assignee: String(assignee).trim(),
-                            startDate: startDate,
-                            endDate: endDate,
-                            progress: isNaN(progress) ? 0 : progress,
-                            files: [],
-                            comments: []
-                        });
-                        addedCount++;
-                    }
-                });
-
-                if (addedCount > 0) {
-                    localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
-                    alert(`기존 업무 자료를 삭제하고, 새롭게 ${addedCount}건의 업무를 등록했습니다!`);
-                    addLog(`엑셀로 업무 ${addedCount}건 덮어쓰기 등록`);
-                    fileInput.value = '';
-                    closeTaskModal();
-                    updateDeptSelects();
-                    render();
-                } else {
-                    alert('등록할 업무 데이터가 올바르지 않습니다.');
-                }
-            };
-            reader.readAsArrayBuffer(fileInput.files[0]);
-        }
-
-        function setStatusFilter(status) {
-            selectedStatusFilter = status;
-
-            const cards = ['cardAll', 'cardOngoing', 'cardWarning', 'cardExpired'];
-            cards.forEach(c => {
-                document.getElementById(c).classList.remove('ring-2', 'ring-indigo-500', 'ring-blue-500', 'ring-amber-500', 'ring-red-500', 'stat-card-active');
-            });
-
-            const badge = document.getElementById('statusFilterBadge');
-            const badgeText = document.getElementById('statusFilterName');
-
-            if (status === 'ONGOING') {
-                document.getElementById('cardOngoing').classList.add('ring-2', 'ring-blue-500', 'stat-card-active');
-                badge.classList.remove('hidden');
-                badgeText.innerText = '진행 중 업무';
-            } else if (status === 'WARNING') {
-                document.getElementById('cardWarning').classList.add('ring-2', 'ring-amber-500', 'stat-card-active');
-                badge.classList.remove('hidden');
-                badgeText.innerText = '마감 임박 업무';
-            } else if (status === 'EXPIRED') {
-                document.getElementById('cardExpired').classList.add('ring-2', 'ring-red-500', 'stat-card-active');
-                badge.classList.remove('hidden');
-                badgeText.innerText = '기한 만료 업무';
-            } else {
-                document.getElementById('cardAll').classList.add('ring-2', 'ring-indigo-500', 'stat-card-active');
-                badge.classList.add('hidden');
-            }
-
-            render();
-        }
-
-        function handleDateFilterTypeChange() {
-            const type = document.getElementById('dateFilterType').value;
-            const yearInput = document.getElementById('filterYear');
-            const monthInput = document.getElementById('filterMonth');
-            const dayInput = document.getElementById('filterDay');
-            const rangeGroup = document.getElementById('filterRangeGroup');
-
-            yearInput.classList.add('hidden');
-            monthInput.classList.add('hidden');
-            dayInput.classList.add('hidden');
-            rangeGroup.classList.add('hidden');
-
-            if (type === 'YEAR') yearInput.classList.remove('hidden');
-            else if (type === 'MONTH') monthInput.classList.remove('hidden');
-            else if (type === 'DAY') dayInput.classList.remove('hidden');
-            else if (type === 'RANGE') rangeGroup.classList.remove('hidden');
-
-            render();
-        }
-
-        function switchView(view) {
-            currentView = view;
-            const btnTable = document.getElementById('btnViewTable');
-            const btnGantt = document.getElementById('btnViewGantt');
-            const secTable = document.getElementById('tableViewSection');
-            const secGantt = document.getElementById('ganttViewSection');
-
-            if (view === 'table') {
-                secTable.classList.remove('hidden');
-                secGantt.classList.add('hidden');
-                btnTable.className = 'px-2.5 py-1.5 rounded-md bg-white text-indigo-900 shadow-xs transition';
-                btnGantt.className = 'px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition';
-            } else {
-                secTable.classList.add('hidden');
-                secGantt.classList.remove('hidden');
-                btnGantt.className = 'px-2.5 py-1.5 rounded-md bg-white text-indigo-900 shadow-xs transition';
-                btnTable.className = 'px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition';
-            }
-            render();
-        }
-
-        function zoomGantt(delta) {
-            ganttCellWidth += delta;
-            if (ganttCellWidth < 18) ganttCellWidth = 18;
-            if (ganttCellWidth > 80) ganttCellWidth = 80;
-
-            const percent = Math.round((ganttCellWidth / 32) * 100);
-            document.getElementById('ganttZoomVal').innerText = percent + '%';
-            render();
-        }
-
-        function resetGanttZoom() {
-            ganttCellWidth = 32;
-            document.getElementById('ganttZoomVal').innerText = '100%';
-            render();
-        }
-
-        function fitGanttToOnePage() {
-            const filteredTasks = getFilteredTasks();
-            if (!filteredTasks || filteredTasks.length === 0) return;
-
-            let minDateObj = new Date();
-            let maxDateObj = new Date();
-            minDateObj.setDate(minDateObj.getDate() - 2);
-            maxDateObj.setDate(maxDateObj.getDate() + 10);
-
-            filteredTasks.forEach(t => {
-                const s = new Date(t.startDate || t.endDate);
-                const e = new Date(t.endDate);
-                if (s < minDateObj) minDateObj = new Date(s);
-                if (e > maxDateObj) maxDateObj = new Date(e);
-            });
-
-            const totalDays = Math.max(1, Math.floor((maxDateObj - minDateObj) / (1000 * 60 * 60 * 24)) + 1);
-            
-            const viewport = document.getElementById('ganttViewport');
-            const availableWidth = (viewport ? viewport.clientWidth : 900) - 230;
-
-            let calculatedCellWidth = Math.floor(availableWidth / totalDays);
-            if (calculatedCellWidth < 18) calculatedCellWidth = 18;
-            if (calculatedCellWidth > 80) calculatedCellWidth = 80;
-
-            ganttCellWidth = calculatedCellWidth;
-            const percent = Math.round((ganttCellWidth / 32) * 100);
-            document.getElementById('ganttZoomVal').innerText = percent + '%';
-            render();
-        }
-
-        function toggleSortOrder() {
-            currentSortAsc = !currentSortAsc;
-            const text = document.getElementById('sortOrderText');
-            const icon = document.getElementById('sortOrderIcon');
-
-            if (currentSortAsc) {
-                text.innerText = "오름차순";
-                icon.className = "fa-solid fa-arrow-down-a-z text-indigo-600";
-            } else {
-                text.innerText = "내림차순";
-                icon.className = "fa-solid fa-arrow-up-z-a text-indigo-600";
-            }
-            render();
-        }
-
-        function handleHeaderSort(field) {
-            const select = document.getElementById('sortBy');
-            if (select.value === field) {
-                toggleSortOrder();
-            } else {
-                select.value = field;
-                currentSortAsc = true;
-                document.getElementById('sortOrderText').innerText = "오름차순";
-                document.getElementById('sortOrderIcon').className = "fa-solid fa-arrow-down-a-z text-indigo-600";
-                render();
-            }
-        }
-
-        function getFilteredTasks() {
-            const deptFilter = document.getElementById('deptFilter').value;
-            const searchKeyword = document.getElementById('searchInput').value.trim().toLowerCase();
-            const dateTypeElement = document.getElementById('dateFilterType');
-            const dateType = dateTypeElement ? dateTypeElement.value : 'ALL';
-            const today = new Date().toISOString().split('T')[0];
-
-            let result = tasks.filter(t => {
-                const matchUser = (currentUser.role === 'ADMIN') || (t.assignee === currentUser.name);
-                const matchDept = !deptFilter || t.dept === deptFilter;
-                const matchSearch = !searchKeyword || 
-                    t.name.toLowerCase().includes(searchKeyword) || 
-                    (t.desc && t.desc.toLowerCase().includes(searchKeyword)) ||
-                    t.assignee.toLowerCase().includes(searchKeyword) || 
-                    t.dept.toLowerCase().includes(searchKeyword);
-
-                let matchStatus = true;
-                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
-
-                if (selectedStatusFilter === 'ONGOING') {
-                    matchStatus = t.progress < 100;
-                } else if (selectedStatusFilter === 'WARNING') {
-                    matchStatus = t.progress < 100 && diffDays >= 0 && diffDays <= 3;
-                } else if (selectedStatusFilter === 'EXPIRED') {
-                    matchStatus = t.progress < 100 && diffDays < 0;
-                }
-
-                let matchDate = true;
-                if (dateType === 'YEAR') {
-                    const yearVal = document.getElementById('filterYear').value;
-                    if (yearVal) matchDate = (t.endDate && t.endDate.startsWith(yearVal)) || (t.startDate && t.startDate.startsWith(yearVal));
-                } else if (dateType === 'MONTH') {
-                    const monthVal = document.getElementById('filterMonth').value;
-                    if (monthVal) matchDate = (t.endDate && t.endDate.startsWith(monthVal)) || (t.startDate && t.startDate.startsWith(monthVal));
-                } else if (dateType === 'DAY') {
-                    const dayVal = document.getElementById('filterDay').value;
-                    if (dayVal) matchDate = (t.endDate === dayVal) || (t.startDate === dayVal);
-                } else if (dateType === 'RANGE') {
-                    const startVal = document.getElementById('filterRangeStart').value;
-                    const endVal = document.getElementById('filterRangeEnd').value;
-                    if (startVal) matchDate = matchDate && (t.endDate >= startVal);
-                    if (endVal) matchDate = matchDate && (t.startDate <= endVal);
-                }
-
-                return matchUser && matchDept && matchSearch && matchStatus && matchDate;
-            });
-
-            const sortBy = document.getElementById('sortBy').value;
-            result.sort((a, b) => {
-                let valA = a[sortBy] || '';
-                let valB = b[sortBy] || '';
-
-                if (sortBy === 'files') {
-                    valA = (a.files || []).length;
-                    valB = (b.files || []).length;
-                }
-
-                if (valA < valB) return currentSortAsc ? -1 : 1;
-                if (valA > valB) return currentSortAsc ? 1 : -1;
-                return 0;
-            });
-
-            return result;
-        }
-
-        function updateDashboardStats() {
-            const myTasks = (currentUser.role === 'ADMIN') ? tasks : tasks.filter(t => t.assignee === currentUser.name);
-            const today = new Date().toISOString().split('T')[0];
-
-            let ongoing = 0, warning = 0, expired = 0;
-
-            myTasks.forEach(t => {
-                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
-                if (t.progress < 100) {
-                    ongoing++;
-                    if (diffDays >= 0 && diffDays <= 3) warning++;
-                    else if (diffDays < 0) expired++;
-                }
-            });
-
-            document.getElementById('statTotal').innerText = myTasks.length;
-            document.getElementById('statOngoing').innerText = ongoing;
-            document.getElementById('statWarning').innerText = warning;
-            document.getElementById('statExpired').innerText = expired;
-        }
-
-        function renderAdminCharts() {
-            if (currentUser.role !== 'ADMIN') return;
-
-            const depts = getUniqueDepartments();
-            const deptData = depts.map(d => {
-                const dTasks = tasks.filter(t => t.dept === d);
-                if (dTasks.length === 0) return 0;
-                const totalProgress = dTasks.reduce((sum, t) => sum + (t.progress || 0), 0);
-                return Math.round(totalProgress / dTasks.length);
-            });
-
-            const ctxDept = document.getElementById('deptProgressChart').getContext('2d');
-            if (deptChartInstance) deptChartInstance.destroy();
-            deptChartInstance = new Chart(ctxDept, {
-                type: 'bar',
-                data: {
-                    labels: depts,
-                    datasets: [{
-                        label: '부서별 평균 진행률 (%)',
-                        data: deptData,
-                        backgroundColor: '#4f46e5',
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { y: { min: 0, max: 100 } },
-                    plugins: {
-                        datalabels: {
-                            color: '#ffffff',
-                            font: { weight: 'bold', size: 10 },
-                            formatter: (value) => value + '%'
-                        }
-                    }
-                }
-            });
-
-            const completed = tasks.filter(t => t.progress === 100).length;
-            const inProgress = tasks.filter(t => t.progress < 100).length;
-
-            const ctxStatus = document.getElementById('statusPieChart').getContext('2d');
-            if (statusChartInstance) statusChartInstance.destroy();
-            statusChartInstance = new Chart(ctxStatus, {
-                type: 'doughnut',
-                data: {
-                    labels: ['완료', '진행중'],
-                    datasets: [{
-                        data: [completed, inProgress],
-                        backgroundColor: ['#10b981', '#3b82f6']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        datalabels: {
-                            color: '#ffffff',
-                            font: { weight: 'bold', size: 11 },
-                            formatter: (value, ctx) => {
-                                let sum = 0;
-                                let dataArr = ctx.chart.data.datasets[0].data;
-                                dataArr.map(data => { sum += data; });
-                                if (sum === 0) return '0%';
-                                let percentage = (value * 100 / sum).toFixed(0) + "%";
-                                return percentage;
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function renderTableView(filteredTasks) {
-            const list = document.getElementById('taskList');
-            const today = new Date().toISOString().split('T')[0];
-
-            if (filteredTasks.length === 0) {
-                list.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400">등록되거나 조건에 부합하는 업무가 없습니다.</td></tr>`;
-                return;
-            }
-
-            list.innerHTML = filteredTasks.map(t => {
-                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
-                let badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">진행중</span>';
-
-                if (t.progress === 100) {
-                    badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">완료</span>';
-                } else if (diffDays < 0) {
-                    badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">만료</span>';
-                } else if (diffDays <= 3) {
-                    badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">임박</span>';
-                }
-
-                const commentsCount = (t.comments || []).length;
-                const filesCount = (t.files || []).length;
-
-                return `
-                <tr class="hover:bg-indigo-50/40 transition border-b border-slate-100">
-                    <td class="p-3 text-center">
-                        <input type="checkbox" value="${t.id}" class="task-item-checkbox accent-indigo-600 rounded cursor-pointer">
-                    </td>
-                    <td class="p-3">${badge}</td>
-                    <td class="p-3 font-semibold text-slate-600">${t.dept}</td>
-                    <td class="p-3">
-                        <button onclick="openTaskModal('${t.id}')" class="font-bold text-indigo-900 hover:text-indigo-600 hover:underline text-left">
-                            ${t.name}
-                        </button>
-                    </td>
-                    <td class="p-3 font-medium text-slate-700">${t.assignee}</td>
-                    <td class="p-3">
-                        <div class="text-[11px] font-medium text-slate-500 mb-0.5">${t.startDate || t.endDate} ~ ${t.endDate}</div>
-                        <div class="w-24 bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-indigo-600 h-full" style="width: ${t.progress}%"></div>
-                        </div>
-                    </td>
-                    <td class="p-3">
-                        ${filesCount > 0 ? `<span class="bg-slate-100 text-slate-700 font-bold px-1.5 py-0.5 rounded text-[10px]"><i class="fa-solid fa-paperclip mr-0.5"></i>${filesCount}</span>` : '-'}
-                    </td>
-                    <td class="p-3">
-                        <button onclick="openChatWindow('${t.id}')" class="text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1">
-                            <i class="fa-regular fa-comment text-xs"></i> <span>${commentsCount}</span>
-                        </button>
-                    </td>
-                    <td class="p-3 text-right">
-                        <button onclick="openTaskModal('${t.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded font-bold transition">수정</button>
-                    </td>
-                </tr>
-                `;
-            }).join('');
-        }
-
-        function renderGanttView(filteredTasks) {
-            const container = document.getElementById('ganttContainer');
-            if (!container) return;
-
-            if (filteredTasks.length === 0) {
-                container.innerHTML = '<div class="p-8 text-center text-slate-400">표시할 간트차트 데이터가 없습니다.</div>';
-                return;
-            }
-
-            let minDateObj = new Date();
-            let maxDateObj = new Date();
-            minDateObj.setDate(minDateObj.getDate() - 2);
-            maxDateObj.setDate(maxDateObj.getDate() + 10);
-
-            filteredTasks.forEach(t => {
-                const s = new Date(t.startDate || t.endDate);
-                const e = new Date(t.endDate);
-                if (s < minDateObj) minDateObj = new Date(s);
-                if (e > maxDateObj) maxDateObj = new Date(e);
-            });
-
-            let dates = [];
-            let curr = new Date(minDateObj);
-            while (curr <= maxDateObj) {
-                dates.push(new Date(curr));
-                curr.setDate(curr.getDate() + 1);
-            }
-
-            let headerDaysHtml = dates.map(d => {
-                const dayStr = d.getDate();
-                const isSun = d.getDay() === 0;
-                const isSat = d.getDay() === 6;
-                let colorClass = 'text-slate-600';
-                if (isSun) colorClass = 'text-red-500 font-bold';
-                if (isSat) colorClass = 'text-blue-500 font-bold';
-
-                return `<div style="width:${ganttCellWidth}px" class="shrink-0 text-center border-r border-slate-200 py-1 text-[10px] ${colorClass}">${dayStr}</div>`;
-            }).join('');
-
-            let rowsHtml = filteredTasks.map(t => {
-                const startD = new Date(t.startDate || t.endDate);
-                const endD = new Date(t.endDate);
-
-                const startIndex = Math.max(0, Math.floor((startD - minDateObj) / (1000 * 60 * 60 * 24)));
-                const duration = Math.max(1, Math.floor((endD - startD) / (1000 * 60 * 60 * 24)) + 1);
-
-                const leftPos = startIndex * ganttCellWidth;
-                const widthPos = duration * ganttCellWidth;
-
-                let barBg = 'bg-blue-500';
-                if (t.progress === 100) barBg = 'bg-emerald-500';
-
-                return `
-                <div class="flex border-b border-slate-100 hover:bg-slate-50 transition min-w-max items-center h-10">
-                    <div class="w-48 shrink-0 px-3 truncate text-xs font-bold text-slate-800 border-r border-slate-200 cursor-pointer" onclick="openTaskModal('${t.id}')">
-                        [${t.dept}] ${t.name}
-                    </div>
-                    <div class="relative flex-1 flex h-full items-center">
-                        ${dates.map(() => `<div style="width:${ganttCellWidth}px" class="h-full shrink-0 border-r border-slate-100"></div>`).join('')}
-                        <div style="left:${leftPos}px; width:${widthPos}px;" 
-                             class="absolute h-6 rounded-md ${barBg} text-white text-[10px] font-bold px-2 flex items-center justify-between shadow-xs cursor-pointer hover:brightness-110"
-                             onclick="openTaskModal('${t.id}')">
-                            <span class="truncate">${t.assignee}</span>
-                            <span class="ml-1 shrink-0">${t.progress}%</span>
-                        </div>
-                    </div>
-                </div>
-                `;
-            }).join('');
-
-            container.innerHTML = `
-            <div class="min-w-max">
-                <div class="flex border-b border-slate-200 bg-slate-100 font-bold text-xs sticky top-0 z-10">
-                    <div class="w-48 shrink-0 px-3 py-2 border-r border-slate-200 text-slate-700">부서 / 업무명</div>
-                    <div class="flex flex-1">${headerDaysHtml}</div>
-                </div>
-                ${rowsHtml}
-            </div>
-            `;
-        }
-
-        function render() {
-            updateDashboardStats();
-            const filteredTasks = getFilteredTasks();
-
-            if (currentView === 'table') {
-                renderTableView(filteredTasks);
-            } else {
-                renderGanttView(filteredTasks);
-            }
-
-            renderAdminCharts();
-            const cb = document.getElementById('selectAllTasksCb');
-            if (cb) cb.checked = false;
-        }
-
-        function openTaskModal(taskId = null) {
-            currentOpenTaskId = taskId;
-            const modal = document.getElementById('taskModal');
-            const form = document.getElementById('taskForm');
-            const batchSec = document.getElementById('batchTaskUploadSection');
-            const cmtSec = document.getElementById('commentSection');
-            const delBtn = document.getElementById('btnDeleteTask');
-
-            tempFiles = [];
-            document.getElementById('fileListUI').innerHTML = '';
-
-            const assigneeSelect = document.getElementById('taskAssignee');
-            assigneeSelect.innerHTML = registeredUsers.map(u => `<option value="${u.name}">${u.name} (${u.dept})</option>`).join('');
-
-            if (taskId) {
-                const t = tasks.find(item => item.id === taskId);
-                if (!t) return;
-
-                document.getElementById('modalTitle').innerText = '업무 상세 / 수정';
-                document.getElementById('taskId').value = t.id;
-                document.getElementById('taskName').value = t.name;
-                document.getElementById('taskDesc').value = t.desc || '';
-                document.getElementById('taskDept').value = t.dept;
-                document.getElementById('taskAssignee').value = t.assignee;
-                document.getElementById('taskStartDate').value = t.startDate || t.endDate;
-                document.getElementById('taskEndDate').value = t.endDate;
-                document.getElementById('taskProgress').value = t.progress;
-                document.getElementById('progressVal').innerText = t.progress + '%';
-
-                tempFiles = [...(t.files || [])];
-                renderTempFiles();
-
-                batchSec.classList.add('hidden');
-                cmtSec.classList.remove('hidden');
-                delBtn.classList.remove('hidden');
-
-                renderComments(t);
-            } else {
-                document.getElementById('modalTitle').innerText = '신규 업무 등록';
-                form.reset();
-                document.getElementById('taskId').value = '';
-                document.getElementById('taskDept').value = currentUser.dept || '교무기획부';
-                document.getElementById('taskAssignee').value = currentUser.name;
-
-                const todayStr = new Date().toISOString().split('T')[0];
-                document.getElementById('taskStartDate').value = todayStr;
-                document.getElementById('taskEndDate').value = todayStr;
-                document.getElementById('progressVal').innerText = '0%';
-
-                batchSec.classList.remove('hidden');
-                cmtSec.classList.add('hidden');
-                delBtn.classList.add('hidden');
-            }
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeTaskModal() {
-            const modal = document.getElementById('taskModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            currentOpenTaskId = null;
-        }
-
-        function saveTask(e) {
-            e.preventDefault();
-            const id = document.getElementById('taskId').value;
-            const name = document.getElementById('taskName').value.trim();
-            const desc = document.getElementById('taskDesc').value.trim();
-            const dept = document.getElementById('taskDept').value;
-            const assignee = document.getElementById('taskAssignee').value;
-            const startDate = document.getElementById('taskStartDate').value;
-            const endDate = document.getElementById('taskEndDate').value;
-            const progress = parseInt(document.getElementById('taskProgress').value);
-
-            if (id) {
-                const idx = tasks.findIndex(t => t.id === id);
-                if (idx !== -1) {
-                    tasks[idx].name = name;
-                    tasks[idx].desc = desc;
-                    tasks[idx].dept = dept;
-                    tasks[idx].assignee = assignee;
-                    tasks[idx].startDate = startDate;
-                    tasks[idx].endDate = endDate;
-                    tasks[idx].progress = progress;
-                    tasks[idx].files = [...tempFiles];
-                }
-                addLog(`업무 수정: "${name}"`);
-            } else {
-                const newTask = {
-                    id: Date.now().toString(),
-                    name, desc, dept, assignee, startDate, endDate, progress,
-                    files: [...tempFiles],
-                    comments: []
-                };
-                tasks.push(newTask);
-                addLog(`업무 추가: "${name}"`);
-            }
-
-            localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
-            closeTaskModal();
-            updateNotifications();
-            render();
-        }
-
-        function deleteCurrentTask() {
-            if (!currentOpenTaskId) return;
-            if (confirm('정말 삭제하시겠습니까?')) {
-                tasks = tasks.filter(t => t.id !== currentOpenTaskId);
-                localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
-                addLog(`업무 삭제 완료`);
-                closeTaskModal();
-                updateNotifications();
-                render();
-            }
-        }
-
-        function renderComments(task) {
-            const container = document.getElementById('commentList');
-            if (!container) return;
-
-            const comments = task.comments || [];
-            if (comments.length === 0) {
-                container.innerHTML = `<p class="text-slate-400 text-center py-4 text-xs">등록된 코멘트 메시지가 없습니다. 카카오톡 대화방을 열어 메시지를 남기세요.</p>`;
-                return;
-            }
-
-            container.innerHTML = comments.map(c => `
-                <div class="bg-white p-2 rounded border border-slate-200 text-xs space-y-1">
-                    <div class="flex justify-between font-bold text-slate-700">
-                        <span>${c.user}</span>
-                        <span class="text-[10px] text-slate-400 font-normal">${c.date}</span>
-                    </div>
-                    <p class="text-slate-600 leading-snug">${c.text}</p>
-                </div>
-            `).join('');
-        }
-
-        function openChatWindow(taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-
-            const chatWin = window.open('', '_blank', 'width=420,height=600');
-            chatWin.document.write(`
-            <!DOCTYPE html>
-            <html lang="ko">
-            <head>
-                <meta charset="UTF-8">
-                <title>${task.name} - 코멘트</title>
-                <script src="https://cdn.tailwindcss.com"><\/script>
-            </head>
-            <body class="bg-[#bacee0] h-screen flex flex-col p-3 font-sans">
-                <div class="bg-[#a2b9d0] p-3 rounded-t-xl font-bold text-slate-800 text-sm flex justify-between items-center shadow-xs">
-                    <span>💬 ${task.name}</span>
-                    <span class="text-xs text-slate-600">${task.assignee} 선생님</span>
-                </div>
-                <div id="msgBox" class="flex-1 overflow-y-auto p-2 space-y-2 text-xs">
-                    ${(task.comments || []).map(c => `
-                        <div class="flex flex-col ${c.user === currentUser.name ? 'items-end' : 'items-start'}">
-                            <span class="text-[10px] text-slate-600 font-bold mb-0.5">${c.user}</span>
-                            <div class="p-2 rounded-lg max-w-[80%] ${c.user === currentUser.name ? 'bg-[#fee500] text-slate-900' : 'bg-white text-slate-900'} shadow-xs">
-                                ${c.text}
-                            </div>
-                            <span class="text-[9px] text-slate-500 mt-0.5">${c.date}</span>
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="mt-2 flex gap-1">
-                    <input type="text" id="chatInput" placeholder="메시지 입력..." class="flex-1 p-2 rounded-lg text-xs focus:outline-none border">
-                    <button onclick="sendMsg()" class="bg-[#fee500] hover:bg-yellow-400 font-bold px-3 py-2 rounded-lg text-xs text-slate-900 shadow-xs">전송</button>
-                </div>
-                <script>
-                    function sendMsg() {
-                        const txt = document.getElementById('chatInput').value.trim();
-                        if(!txt) return;
-                        window.opener.postMessage({ taskId: '${task.id}', text: txt, user: '${currentUser.name}' }, '*');
-                        document.getElementById('chatInput').value = '';
-                    }
-                    document.getElementById('chatInput').addEventListener('keypress', (e) => { if(e.key==='Enter') sendMsg(); });
-                <\/script>
-            </body>
-            </html>
-            `);
-
-            window.addEventListener('message', function handler(e) {
-                if (e.data && e.data.taskId === taskId) {
-                    const t = tasks.find(item => item.id === taskId);
-                    if (t) {
-                        if (!t.comments) t.comments = [];
-                        const now = new Date();
-                        const timeStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-                        t.comments.push({ user: e.data.user, text: e.data.text, date: timeStr });
-
-                        localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
-                        renderComments(t);
-                        updateNotifications();
-
-                        chatWin.location.reload();
-                    }
-                }
-            });
         }
     </script>
 </body>
