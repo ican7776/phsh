@@ -16,6 +16,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        /* 전체 루트 글꼴 크기 상향 조정 (상대 단위 rem에 맞춰 전 화면 글자 크기가 한눈에 확대됨) */
+        html { font-size: 18px; }
         body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -697,6 +699,8 @@
         let deletedNotifIds = JSON.parse(localStorage.getItem('deletedNotifIds')) || [];
         let adminInbox = JSON.parse(localStorage.getItem('adminInbox')) || [];
 
+        let fileObjects = {}; // 첨부파일 객체 보관용
+
         let tasks = JSON.parse(localStorage.getItem('schoolTasksV2')) || [
             {
                 id: '1',
@@ -1367,9 +1371,27 @@
             }, false);
         }
 
+        function openOrDownloadFile(fileName) {
+            let blobUrl = '';
+            if (fileObjects[fileName]) {
+                blobUrl = URL.createObjectURL(fileObjects[fileName]);
+            } else {
+                const dummyBlob = new Blob([`[Sewha Workspace 첨부파일]\n파일명: ${fileName}\n일시: ${new Date().toLocaleString()}`], { type: 'text/plain;charset=utf-8' });
+                blobUrl = URL.createObjectURL(dummyBlob);
+            }
+
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = fileName;
+            a.target = '_blank';
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        }
+
         function handleFileSelect(files) {
             for(let i=0; i<files.length; i++) {
                 tempFiles.push(files[i].name);
+                fileObjects[files[i].name] = files[i];
             }
             renderTempFiles();
         }
@@ -1377,8 +1399,9 @@
         function renderTempFiles() {
             const ui = document.getElementById('fileListUI');
             ui.innerHTML = tempFiles.map((f, idx) => `
-                <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-[11px] font-bold flex items-center gap-1">
-                    <i class="fa-solid fa-file text-indigo-500"></i> ${f}
+                <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                    <i class="fa-solid fa-file text-indigo-500"></i>
+                    <button type="button" onclick="openOrDownloadFile('${f}')" class="hover:underline font-bold text-indigo-900">${f}</button>
                     <button type="button" onclick="removeTempFile(${idx})" class="text-red-500 hover:text-red-700 ml-1">×</button>
                 </span>
             `).join('');
@@ -2096,7 +2119,7 @@
             }
         }
 
-        /* 🌟 업무 목록 렌더링 (선택 체크박스 포함) 🌟 */
+        /* 🌟 업무 목록 렌더링 (파일 클릭 다운로드 연동 적용) 🌟 */
         function render() {
             const filtered = getFilteredTasks();
             const list = document.getElementById('taskList');
@@ -2137,6 +2160,14 @@
                         <i class="fa-solid fa-comment text-sm"></i> <span class="text-xs font-bold text-slate-700">${(task.comments || []).length}</span>
                        </button>`;
 
+                const fileChips = (task.files && task.files.length > 0) 
+                    ? task.files.map(f => `
+                        <button type="button" onclick="openOrDownloadFile('${f}')" class="inline-flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[11px] font-medium border border-indigo-100 transition mr-1 mb-1">
+                            <i class="fa-solid fa-paperclip text-indigo-500"></i> ${f}
+                        </button>
+                    `).join('') 
+                    : '-';
+
                 html += `
                 <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
                     <td class="p-3 text-center">
@@ -2156,7 +2187,7 @@
                             <span class="text-[10px] font-bold text-slate-600">${task.progress}%</span>
                         </div>
                     </td>
-                    <td class="p-3">${(task.files && task.files.length > 0) ? `<button onclick="openTaskModal('${task.id}')" class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded text-[11px] font-medium"><i class="fa-solid fa-paperclip"></i> ${task.files.length}개</button>` : '-'}</td>
+                    <td class="p-3 flex flex-wrap">${fileChips}</td>
                     <td class="p-3">${commentBtnHtml}</td>
                     <td class="p-3 text-right space-x-1 whitespace-nowrap">
                         ${canEdit ? `
