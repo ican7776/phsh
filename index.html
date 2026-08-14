@@ -16,6 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        /* 전체 루트 글꼴 크기 상향 조정 (상대 단위 rem에 맞춰 전 화면 글자 크기가 한눈에 확대됨) */
         html { font-size: 18px; }
         body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
@@ -35,9 +36,9 @@
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-indigo-100 selection:text-indigo-900">
 
-    <!-- 로고 Base64 전역 인라인 스크립트 용 -->
+    <!-- 로고 Base64 전역 인라인 스크립트 용 / 이미지 태그용 -->
     <script>
-        const SEWHA_LOGO_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSU6BAAAAAAA..."; 
+        const SEWHA_LOGO_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSU6BAAAAAAA...[LOGO_DATA]"; 
     </script>
 
     <!-- 전역 공지사항 배너 -->
@@ -148,7 +149,7 @@
                     <span>전체 선택</span>
                 </label>
                 <div class="flex items-center gap-1.5">
-                    <button onclick="markSelectedNotifsAsRead()" class="bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold transition">
+                    <button onclick="markSelectedNotifsAsRead(true)" class="bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold transition">
                         <i class="fa-solid fa-check text-indigo-500 mr-0.5"></i> 선택 읽음
                     </button>
                     <button onclick="markAllNotifsAsRead()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[11px] font-bold transition">
@@ -265,7 +266,7 @@
             </div>
         </div>
 
-        <!-- 관리자 시각화 차트 -->
+        <!-- 관리자 시각화 차트 (퍼센트 수치 표시 적용) -->
         <div id="adminChartSection" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs">
             <div class="md:col-span-2 space-y-2">
                 <h4 class="text-xs font-bold text-slate-700 flex items-center"><i class="fa-solid fa-chart-column text-indigo-600 mr-1.5"></i>부서별 업무 완료 및 진행률</h4>
@@ -333,7 +334,7 @@
                 </div>
             </div>
 
-            <!-- 업무 선택/전체 삭제 툴바 기능 -->
+            <!-- 업무 선택/전체 삭제 툴바 기능 포함 -->
             <div class="flex items-center justify-between gap-2 border-t pt-2.5">
                 <div class="flex items-center gap-2">
                     <div class="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-semibold">
@@ -345,6 +346,7 @@
                         </button>
                     </div>
 
+                    <!-- 업무 선택 삭제 / 전체 삭제 버튼 -->
                     <div class="flex items-center gap-1.5 pl-2 border-l border-slate-200">
                         <button onclick="deleteSelectedTasks()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2.5 py-1.5 rounded-lg font-bold text-xs transition flex items-center gap-1">
                             <i class="fa-solid fa-trash"></i> <span class="hidden sm:inline">선택 삭제</span>
@@ -366,7 +368,7 @@
             </div>
         </div>
 
-        <!-- Task List View -->
+        <!-- Task List View (선택 체크박스 적용) -->
         <div id="tableViewSection" class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-x-auto custom-scrollbar">
             <table class="w-full text-left text-xs min-w-[680px]">
                 <thead class="bg-slate-50 text-slate-600 border-b border-slate-200 font-bold select-none">
@@ -464,7 +466,7 @@
         </div>
     </div>
 
-    <!-- 통합 회원/로그/알림/수신함 관리 모달 -->
+    <!-- 통합 회원/로그/알림/수신함 관리 모달 (관리자용) -->
     <div id="userModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-3 sm:p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full flex flex-col max-h-[85vh] sm:max-h-[90vh] my-auto">
             <div class="bg-indigo-900 text-white px-4 py-3 flex justify-between items-center shrink-0 rounded-t-xl">
@@ -676,6 +678,7 @@
 
     <!-- 로직 스크립트 -->
     <script>
+        // DataLabels 플러그인 등록
         Chart.register(ChartDataLabels);
 
         // 구글 시트 연동 데이터 전역 변수 선언
@@ -695,7 +698,7 @@
         let deletedNotifIds = JSON.parse(localStorage.getItem('deletedNotifIds')) || [];
         let adminInbox = JSON.parse(localStorage.getItem('adminInbox')) || [];
 
-        let fileObjects = {};
+        let fileObjects = {}; // 첨부파일 객체 보관용
 
         let pendingUserIndex = null;
         let currentOpenTaskId = null;
@@ -721,11 +724,33 @@
                     document.getElementById('noticeText').innerText = noticeTextData;
                     setupDragAndDrop();
 
+<<<<<<< HEAD
                     if (!currentUser) {
                         document.getElementById('loginOverlay').classList.remove('hidden');
                     } else {
                         document.getElementById('loginOverlay').classList.add('hidden');
                         initApp();
+=======
+            if (!currentUser) {
+                document.getElementById('loginOverlay').classList.remove('hidden');
+            } else {
+                document.getElementById('loginOverlay').classList.add('hidden');
+                initApp();
+            }
+
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'schoolTasksV2' || e.key === 'broadcastNotifs' || e.key === 'readNotifIds' || e.key === 'deletedNotifIds' || e.key === 'adminInbox') {
+                    tasks = JSON.parse(localStorage.getItem('schoolTasksV2')) || [];
+                    broadcastNotifs = JSON.parse(localStorage.getItem('broadcastNotifs')) || [];
+                    readNotifIds = JSON.parse(localStorage.getItem('readNotifIds')) || [];
+                    deletedNotifIds = JSON.parse(localStorage.getItem('deletedNotifIds')) || [];
+                    adminInbox = JSON.parse(localStorage.getItem('adminInbox')) || [];
+                    updateNotifications();
+                    render();
+                    if(currentOpenTaskId) {
+                        const curTask = tasks.find(t => t.id === currentOpenTaskId);
+                        if(curTask) renderComments(curTask);
+>>>>>>> parent of a391dca (Add files via upload)
                     }
                 }).getSheetData('users');
             }).getSheetData('tasks');
@@ -1165,6 +1190,7 @@
             }
         }
 
+        /* 🌟 업무 목록 선택 삭제 및 전체 삭제 기능 🌟 */
         function toggleSelectAllTasks(mainCb) {
             const checkboxes = document.querySelectorAll('.task-item-checkbox');
             checkboxes.forEach(cb => cb.checked = mainCb.checked);
@@ -1548,6 +1574,1011 @@
             renderAdminInbox();
             renderAuditLogs();
         }
+<<<<<<< HEAD
+=======
+
+        function switchAdminSubTab(sub) {
+            const btnUsers = document.getElementById('tabUserListBtn');
+            const btnBroadcast = document.getElementById('tabBroadcastBtn');
+            const btnInbox = document.getElementById('tabAdminInboxBtn');
+            const btnLogs = document.getElementById('tabAuditLogBtn');
+
+            const secUsers = document.getElementById('adminUserTabSection');
+            const secBroadcast = document.getElementById('adminBroadcastTabSection');
+            const secInbox = document.getElementById('adminInboxTabSection');
+            const secLogs = document.getElementById('adminAuditLogTabSection');
+
+            secUsers.classList.add('hidden');
+            secBroadcast.classList.add('hidden');
+            secInbox.classList.add('hidden');
+            secLogs.classList.add('hidden');
+
+            btnUsers.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
+            btnBroadcast.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
+            btnInbox.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
+            btnLogs.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
+
+            if(sub === 'users') {
+                secUsers.classList.remove('hidden');
+                btnUsers.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
+            } else if(sub === 'broadcast') {
+                secBroadcast.classList.remove('hidden');
+                btnBroadcast.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
+            } else if(sub === 'inbox') {
+                secInbox.classList.remove('hidden');
+                btnInbox.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
+                renderAdminInbox();
+            } else {
+                secLogs.classList.remove('hidden');
+                btnLogs.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
+            }
+        }
+
+        function closeUserModal() {
+            const modal = document.getElementById('userModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            updateDeptSelects();
+            render();
+        }
+
+        function renderUserList() {
+            const list = document.getElementById('userListUI');
+            document.getElementById('userCount').innerText = registeredUsers.length;
+
+            list.innerHTML = registeredUsers.map((u, i) => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-2 font-bold text-slate-800">${u.name}</td>
+                    <td class="p-2 text-slate-500">${u.year}</td>
+                    <td class="p-2 text-indigo-700 font-medium">${u.dept || '-'}</td>
+                    <td class="p-2">
+                        ${u.hasPw 
+                            ? '<span class="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-bold text-[10px] whitespace-nowrap">설정완료</span>' 
+                            : '<span class="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded font-bold text-[10px] whitespace-nowrap">미설정</span>'}
+                    </td>
+                    <td class="p-2 text-right space-x-1 whitespace-nowrap">
+                        <button onclick="resetUserPw(${i})" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">초기화</button>
+                        <button onclick="deleteUser(${i})" class="text-[10px] bg-red-50 hover:bg-red-100 text-red-600 px-1.5 py-0.5 rounded"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function addSingleUser() {
+            const name = document.getElementById('addUserName').value.trim();
+            const year = document.getElementById('addUserYear').value.trim();
+            const dept = document.getElementById('addUserDept').value.trim() || '교무기획부';
+
+            if (!name || !year) return alert('이름과 학년도를 모두 입력해주세요.');
+
+            if (registeredUsers.some(u => u.name === name && u.year === year)) {
+                return alert('이미 존재하는 회원입니다.');
+            }
+
+            registeredUsers.push({ name, year, dept, password: null, hasPw: false });
+            localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+
+            addLog(`신규 회원 등록: ${name} (${dept})`);
+            document.getElementById('addUserName').value = '';
+            document.getElementById('addUserDept').value = '';
+            renderUserList();
+            updateDeptSelects();
+        }
+
+        function resetUserPw(idx) {
+            if (confirm(`${registeredUsers[idx].name} 회원의 비밀번호를 초기화하시겠습니까?`)) {
+                addLog(`회원 비밀번호 초기화: ${registeredUsers[idx].name}`);
+                registeredUsers[idx].password = null;
+                registeredUsers[idx].hasPw = false;
+                localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+                renderUserList();
+            }
+        }
+
+        function deleteUser(idx) {
+            if (confirm(`${registeredUsers[idx].name} 회원을 삭제하시겠습니까?`)) {
+                addLog(`회원 삭제: ${registeredUsers[idx].name}`);
+                registeredUsers.splice(idx, 1);
+                localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+                renderUserList();
+                updateDeptSelects();
+            }
+        }
+
+        function downloadTemplate() {
+            const data = [
+                ["이름", "학년도", "부서명"],
+                ["홍길동", "2026", "교무기획부"],
+                ["김철수", "2026", "학생생활부"]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "회원명단");
+            XLSX.writeFile(wb, "세화고_회원일괄등록양식_2026.xlsx");
+        }
+
+        function uploadExcelUsers() {
+            const fileInput = document.getElementById('excelFileInput');
+            if (!fileInput.files[0]) return alert('엑셀 파일을 선택해주세요.');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+
+                // 엑셀 업로드 시 예전 회원 자료를 덮어쓰기 위해 초기화
+                registeredUsers = [];
+
+                let addedCount = 0;
+                rows.forEach(row => {
+                    const name = row['이름'] || row['성명'];
+                    const year = String(row['학년도'] || '2026');
+                    const dept = row['부서명'] || row['부서'] || '교무기획부';
+
+                    if (name && !registeredUsers.some(u => u.name === name && u.year === year)) {
+                        registeredUsers.push({ name, year, dept, password: null, hasPw: false });
+                        addedCount++;
+                    }
+                });
+
+                localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+                alert(`기존 회원 자료를 삭제하고, 새롭게 ${addedCount}명의 회원을 등록했습니다!`);
+                addLog(`엑셀로 회원 ${addedCount}명 덮어쓰기 등록`);
+                fileInput.value = '';
+                renderUserList();
+                updateDeptSelects();
+            };
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        function downloadTaskTemplate() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const data = [
+                ["업무명", "상세설명", "부서", "담당자", "시작일", "마감일", "진행률(%)"],
+                ["2학기 교육과정 수립", "세부지침 참고", "교무기획부", "홍길동", todayStr, todayStr, "0"],
+                ["학생 안전점검 실시", "시설 점검표 작성", "학생생활부", "김철수", todayStr, todayStr, "20"]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "업무일괄등록");
+            XLSX.writeFile(wb, "세화고_업무일괄등록양식.xlsx");
+        }
+
+        function uploadExcelTasks() {
+            const fileInput = document.getElementById('taskExcelFileInput');
+            if (!fileInput.files[0]) return alert('엑셀 파일을 선택해주세요.');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+
+                // 엑셀 업로드 시 예전 업무 자료를 덮어쓰기 위해 초기화
+                tasks = [];
+
+                let addedCount = 0;
+                const todayStr = new Date().toISOString().split('T')[0];
+
+                rows.forEach(row => {
+                    const name = row['업무명'];
+                    const desc = row['상세설명'] || '';
+                    const dept = row['부서'] || (currentUser.dept || '교무기획부');
+                    const assignee = row['담당자'] || currentUser.name;
+                    const startDate = row['시작일'] ? String(row['시작일']).trim() : todayStr;
+                    const endDate = row['마감일'] ? String(row['마감일']).trim() : todayStr;
+                    const progress = row['진행률(%)'] !== undefined ? parseInt(row['진행률(%)']) : 0;
+
+                    if (name) {
+                        tasks.push({
+                            id: (Date.now() + Math.random()).toString(),
+                            name: String(name).trim(),
+                            desc: String(desc).trim(),
+                            dept: String(dept).trim(),
+                            assignee: String(assignee).trim(),
+                            startDate: startDate,
+                            endDate: endDate,
+                            progress: isNaN(progress) ? 0 : progress,
+                            files: [],
+                            comments: []
+                        });
+                        addedCount++;
+                    }
+                });
+
+                if (addedCount > 0) {
+                    localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
+                    alert(`기존 업무 자료를 삭제하고, 새롭게 ${addedCount}건의 업무를 등록했습니다!`);
+                    addLog(`엑셀로 업무 ${addedCount}건 덮어쓰기 등록`);
+                    fileInput.value = '';
+                    closeTaskModal();
+                    updateDeptSelects();
+                    render();
+                } else {
+                    alert('등록할 업무 데이터가 올바르지 않습니다.');
+                }
+            };
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        function setStatusFilter(status) {
+            selectedStatusFilter = status;
+
+            const cards = ['cardAll', 'cardOngoing', 'cardWarning', 'cardExpired'];
+            cards.forEach(c => {
+                document.getElementById(c).classList.remove('ring-2', 'ring-indigo-500', 'ring-blue-500', 'ring-amber-500', 'ring-red-500', 'stat-card-active');
+            });
+
+            const badge = document.getElementById('statusFilterBadge');
+            const badgeText = document.getElementById('statusFilterName');
+
+            if (status === 'ONGOING') {
+                document.getElementById('cardOngoing').classList.add('ring-2', 'ring-blue-500', 'stat-card-active');
+                badge.classList.remove('hidden');
+                badgeText.innerText = '진행 중 업무';
+            } else if (status === 'WARNING') {
+                document.getElementById('cardWarning').classList.add('ring-2', 'ring-amber-500', 'stat-card-active');
+                badge.classList.remove('hidden');
+                badgeText.innerText = '마감 임박 업무';
+            } else if (status === 'EXPIRED') {
+                document.getElementById('cardExpired').classList.add('ring-2', 'ring-red-500', 'stat-card-active');
+                badge.classList.remove('hidden');
+                badgeText.innerText = '기한 만료 업무';
+            } else {
+                document.getElementById('cardAll').classList.add('ring-2', 'ring-indigo-500', 'stat-card-active');
+                badge.classList.add('hidden');
+            }
+
+            render();
+        }
+
+        function handleDateFilterTypeChange() {
+            const type = document.getElementById('dateFilterType').value;
+            const yearInput = document.getElementById('filterYear');
+            const monthInput = document.getElementById('filterMonth');
+            const dayInput = document.getElementById('filterDay');
+            const rangeGroup = document.getElementById('filterRangeGroup');
+
+            yearInput.classList.add('hidden');
+            monthInput.classList.add('hidden');
+            dayInput.classList.add('hidden');
+            rangeGroup.classList.add('hidden');
+
+            if (type === 'YEAR') yearInput.classList.remove('hidden');
+            else if (type === 'MONTH') monthInput.classList.remove('hidden');
+            else if (type === 'DAY') dayInput.classList.remove('hidden');
+            else if (type === 'RANGE') rangeGroup.classList.remove('hidden');
+
+            render();
+        }
+
+        function switchView(view) {
+            currentView = view;
+            const btnTable = document.getElementById('btnViewTable');
+            const btnGantt = document.getElementById('btnViewGantt');
+            const secTable = document.getElementById('tableViewSection');
+            const secGantt = document.getElementById('ganttViewSection');
+
+            if (view === 'table') {
+                secTable.classList.remove('hidden');
+                secGantt.classList.add('hidden');
+                btnTable.className = 'px-2.5 py-1.5 rounded-md bg-white text-indigo-900 shadow-xs transition';
+                btnGantt.className = 'px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition';
+            } else {
+                secTable.classList.add('hidden');
+                secGantt.classList.remove('hidden');
+                btnGantt.className = 'px-2.5 py-1.5 rounded-md bg-white text-indigo-900 shadow-xs transition';
+                btnTable.className = 'px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition';
+            }
+            render();
+        }
+
+        function zoomGantt(delta) {
+            ganttCellWidth += delta;
+            if (ganttCellWidth < 18) ganttCellWidth = 18;
+            if (ganttCellWidth > 80) ganttCellWidth = 80;
+
+            const percent = Math.round((ganttCellWidth / 32) * 100);
+            document.getElementById('ganttZoomVal').innerText = percent + '%';
+            render();
+        }
+
+        function resetGanttZoom() {
+            ganttCellWidth = 32;
+            document.getElementById('ganttZoomVal').innerText = '100%';
+            render();
+        }
+
+        function fitGanttToOnePage() {
+            const filteredTasks = getFilteredTasks();
+            if (!filteredTasks || filteredTasks.length === 0) return;
+
+            let minDateObj = new Date();
+            let maxDateObj = new Date();
+            minDateObj.setDate(minDateObj.getDate() - 2);
+            maxDateObj.setDate(maxDateObj.getDate() + 10);
+
+            filteredTasks.forEach(t => {
+                const s = new Date(t.startDate || t.endDate);
+                const e = new Date(t.endDate);
+                if (s < minDateObj) minDateObj = new Date(s);
+                if (e > maxDateObj) maxDateObj = new Date(e);
+            });
+
+            const totalDays = Math.max(1, Math.floor((maxDateObj - minDateObj) / (1000 * 60 * 60 * 24)) + 1);
+            
+            const viewport = document.getElementById('ganttViewport');
+            const availableWidth = (viewport ? viewport.clientWidth : 900) - 230;
+
+            let calculatedCellWidth = Math.floor(availableWidth / totalDays);
+            if (calculatedCellWidth < 18) calculatedCellWidth = 18;
+            if (calculatedCellWidth > 80) calculatedCellWidth = 80;
+
+            ganttCellWidth = calculatedCellWidth;
+            const percent = Math.round((ganttCellWidth / 32) * 100);
+            document.getElementById('ganttZoomVal').innerText = percent + '%';
+            render();
+        }
+
+        function toggleSortOrder() {
+            currentSortAsc = !currentSortAsc;
+            const text = document.getElementById('sortOrderText');
+            const icon = document.getElementById('sortOrderIcon');
+
+            if (currentSortAsc) {
+                text.innerText = "오름차순";
+                icon.className = "fa-solid fa-arrow-down-a-z text-indigo-600";
+            } else {
+                text.innerText = "내림차순";
+                icon.className = "fa-solid fa-arrow-up-z-a text-indigo-600";
+            }
+            render();
+        }
+
+        function handleHeaderSort(field) {
+            const select = document.getElementById('sortBy');
+            if (select.value === field) {
+                toggleSortOrder();
+            } else {
+                select.value = field;
+                currentSortAsc = true;
+                document.getElementById('sortOrderText').innerText = "오름차순";
+                document.getElementById('sortOrderIcon').className = "fa-solid fa-arrow-down-a-z text-indigo-600";
+                render();
+            }
+        }
+
+        function getFilteredTasks() {
+            const deptFilter = document.getElementById('deptFilter').value;
+            const searchKeyword = document.getElementById('searchInput').value.trim().toLowerCase();
+            const dateTypeElement = document.getElementById('dateFilterType');
+            const dateType = dateTypeElement ? dateTypeElement.value : 'ALL';
+            const today = new Date().toISOString().split('T')[0];
+
+            let result = tasks.filter(t => {
+                const matchUser = (currentUser.role === 'ADMIN') || (t.assignee === currentUser.name);
+                const matchDept = !deptFilter || t.dept === deptFilter;
+                const matchSearch = !searchKeyword || 
+                    t.name.toLowerCase().includes(searchKeyword) || 
+                    (t.desc && t.desc.toLowerCase().includes(searchKeyword)) ||
+                    t.assignee.toLowerCase().includes(searchKeyword) || 
+                    t.dept.toLowerCase().includes(searchKeyword);
+
+                let matchStatus = true;
+                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+
+                if (selectedStatusFilter === 'ONGOING') {
+                    matchStatus = (t.progress < 100);
+                } else if (selectedStatusFilter === 'WARNING') {
+                    matchStatus = (t.progress < 100) && (diffDays >= 0 && diffDays <= 3);
+                } else if (selectedStatusFilter === 'EXPIRED') {
+                    matchStatus = (t.progress < 100) && (diffDays < 0);
+                }
+
+                let matchDate = true;
+                if (dateType === 'YEAR') {
+                    const yearVal = document.getElementById('filterYear').value;
+                    if (yearVal && t.endDate) matchDate = t.endDate.startsWith(yearVal);
+                } else if (dateType === 'MONTH') {
+                    const monthVal = document.getElementById('filterMonth').value;
+                    if (monthVal && t.endDate) matchDate = t.endDate.startsWith(monthVal);
+                } else if (dateType === 'DAY') {
+                    const dayVal = document.getElementById('filterDay').value;
+                    if (dayVal && t.endDate) matchDate = (t.endDate === dayVal);
+                } else if (dateType === 'RANGE') {
+                    const startVal = document.getElementById('filterRangeStart').value;
+                    const endVal = document.getElementById('filterRangeEnd').value;
+                    if (startVal && endVal && t.endDate) {
+                        matchDate = (t.endDate >= startVal && t.endDate <= endVal);
+                    }
+                }
+
+                return matchUser && matchDept && matchSearch && matchStatus && matchDate;
+            });
+
+            const sortBy = document.getElementById('sortBy') ? document.getElementById('sortBy').value : 'endDate';
+            result.sort((a, b) => {
+                let valA = a[sortBy] || '';
+                let valB = b[sortBy] || '';
+
+                if (sortBy === 'files') {
+                    valA = (a.files || []).length;
+                    valB = (b.files || []).length;
+                } else if (sortBy === 'progress') {
+                    valA = a.progress || 0;
+                    valB = b.progress || 0;
+                }
+
+                let comp = 0;
+                if (valA < valB) comp = -1;
+                else if (valA > valB) comp = 1;
+
+                return currentSortAsc ? comp : -comp;
+            });
+
+            return result;
+        }
+
+        function render() {
+            if (!currentUser) return;
+
+            const filtered = getFilteredTasks();
+            const today = new Date().toISOString().split('T')[0];
+
+            let totalCount = 0;
+            let ongoingCount = 0;
+            let warningCount = 0;
+            let expiredCount = 0;
+
+            const myTasks = (currentUser.role === 'ADMIN') ? tasks : tasks.filter(t => t.assignee === currentUser.name);
+
+            myTasks.forEach(t => {
+                totalCount++;
+                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                if (t.progress < 100) {
+                    ongoingCount++;
+                    if (diffDays >= 0 && diffDays <= 3) warningCount++;
+                    else if (diffDays < 0) expiredCount++;
+                }
+            });
+
+            document.getElementById('statTotal').innerText = totalCount;
+            document.getElementById('statOngoing').innerText = ongoingCount;
+            document.getElementById('statWarning').innerText = warningCount;
+            document.getElementById('statExpired').innerText = expiredCount;
+
+            renderTable(filtered);
+            if (currentUser.role === 'ADMIN') {
+                renderGantt(filtered);
+                renderAdminCharts();
+            }
+        }
+
+        function renderTable(taskListData) {
+            const list = document.getElementById('taskList');
+            if(!list) return;
+
+            if (taskListData.length === 0) {
+                list.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400">조건에 맞는 업무가 없습니다.</td></tr>`;
+                return;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+
+            list.innerHTML = taskListData.map(t => {
+                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                
+                let badge = '<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold text-[10px]">진행중</span>';
+                if (t.progress === 100) badge = '<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold text-[10px]">완료</span>';
+                else if (diffDays < 0) badge = '<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold text-[10px]">만료</span>';
+                else if (diffDays <= 3) badge = '<span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold text-[10px]">임박</span>';
+
+                const fileCount = (t.files || []).length;
+                const fileBadge = fileCount > 0 
+                    ? `<span class="text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded font-bold text-[10px]"><i class="fa-solid fa-paperclip"></i> ${fileCount}</span>` 
+                    : '<span class="text-slate-300 text-[10px]">-</span>';
+
+                const cmtCount = (t.comments || []).length;
+                const cmtBadge = cmtCount > 0
+                    ? `<button onclick="openChatWindow('${t.id}')" class="text-amber-600 bg-amber-50 border border-amber-200 hover:bg-amber-100 px-1.5 py-0.5 rounded font-bold text-[10px]"><i class="fa-solid fa-comments"></i> ${cmtCount}</button>`
+                    : `<button onclick="openChatWindow('${t.id}')" class="text-slate-400 hover:text-slate-600 text-[10px]"><i class="fa-regular fa-comment"></i> 0</button>`;
+
+                return `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3 text-center">
+                        <input type="checkbox" class="task-item-checkbox accent-indigo-600 rounded cursor-pointer" value="${t.id}">
+                    </td>
+                    <td class="p-3">${badge}</td>
+                    <td class="p-3 font-semibold text-slate-600">${t.dept}</td>
+                    <td class="p-3 font-bold text-slate-800 cursor-pointer hover:text-indigo-600 hover:underline" onclick="openTaskModal('${t.id}')">
+                        ${t.name}
+                        ${t.desc ? '<i class="fa-regular fa-file-lines text-slate-400 ml-1 text-[10px]" title="설명 있음"></i>' : ''}
+                    </td>
+                    <td class="p-3 font-medium text-slate-700">${t.assignee}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">
+                        <div class="text-[11px]">${t.startDate || t.endDate} ~ ${t.endDate}</div>
+                        <div class="w-24 bg-slate-200 h-1.5 rounded-full overflow-hidden mt-1">
+                            <div class="bg-indigo-600 h-full" style="width: ${t.progress}%"></div>
+                        </div>
+                    </td>
+                    <td class="p-3">${fileBadge}</td>
+                    <td class="p-3">${cmtBadge}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="openTaskModal('${t.id}')" class="text-slate-400 hover:text-indigo-600 p-1"><i class="fa-solid fa-pen-to-square"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+            
+            const selectAllCb = document.getElementById('selectAllTasksCb');
+            if(selectAllCb) selectAllCb.checked = false;
+        }
+
+        function renderGantt(filteredTasks) {
+            const container = document.getElementById('ganttContainer');
+            if(!container) return;
+
+            if (filteredTasks.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs">표시할 간트차트 데이터가 없습니다.</div>`;
+                return;
+            }
+
+            let minDateObj = new Date();
+            let maxDateObj = new Date();
+            minDateObj.setDate(minDateObj.getDate() - 3);
+            maxDateObj.setDate(maxDateObj.getDate() + 14);
+
+            filteredTasks.forEach(t => {
+                const s = new Date(t.startDate || t.endDate);
+                const e = new Date(t.endDate);
+                if (s < minDateObj) minDateObj = new Date(s);
+                if (e > maxDateObj) maxDateObj = new Date(e);
+            });
+
+            const dateList = [];
+            let curr = new Date(minDateObj);
+            while (curr <= maxDateObj) {
+                dateList.push(new Date(curr));
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            let headerDaysHtml = dateList.map(d => {
+                const dStr = d.toISOString().split('T')[0];
+                const isToday = dStr === todayStr;
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                return `
+                <div style="width: ${ganttCellWidth}px;" class="shrink-0 text-center border-r border-slate-200 py-1 font-bold ${isToday ? 'bg-indigo-600 text-white' : isWeekend ? 'bg-slate-100 text-red-500' : 'text-slate-600'}">
+                    <div class="text-[9px]">${d.getMonth()+1}/${d.getDate()}</div>
+                    <div class="text-[8px] font-normal">${['일','월','화','수','목','금','토'][d.getDay()]}</div>
+                </div>`;
+            }).join('');
+
+            const groupedByDept = {};
+            filteredTasks.forEach(t => {
+                if(!groupedByDept[t.dept]) groupedByDept[t.dept] = [];
+                groupedByDept[t.dept].push(t);
+            });
+
+            let bodyHtml = '';
+            Object.keys(groupedByDept).forEach(dept => {
+                bodyHtml += `
+                <div class="bg-indigo-50/50 border-y border-indigo-100 px-3 py-1 font-bold text-xs text-indigo-900 flex items-center sticky left-0 z-10">
+                    <i class="fa-solid fa-folder-open text-indigo-500 mr-1.5"></i>${dept}
+                </div>`;
+
+                groupedByDept[dept].forEach(t => {
+                    const startD = new Date(t.startDate || t.endDate);
+                    const endD = new Date(t.endDate);
+                    
+                    const startIndex = Math.max(0, Math.floor((startD - minDateObj) / (1000*60*60*24)));
+                    const duration = Math.max(1, Math.floor((endD - startD) / (1000*60*60*24)) + 1);
+
+                    const leftOffset = startIndex * ganttCellWidth;
+                    const barWidth = duration * ganttCellWidth - 2;
+
+                    let barBg = 'bg-blue-500';
+                    if (t.progress === 100) barBg = 'bg-emerald-500';
+                    else {
+                        const diffDays = Math.ceil((endD - new Date(todayStr)) / (1000*60*60*24));
+                        if(diffDays < 0) barBg = 'bg-red-500';
+                        else if(diffDays <= 3) barBg = 'bg-amber-500';
+                    }
+
+                    bodyHtml += `
+                    <div class="flex items-center border-b border-slate-100 hover:bg-slate-50 relative h-9">
+                        <div class="w-56 shrink-0 px-3 font-medium text-xs text-slate-800 truncate sticky left-0 bg-white z-10 shadow-xs flex items-center justify-between border-r">
+                            <span class="truncate cursor-pointer hover:text-indigo-600 hover:underline" onclick="openTaskModal('${t.id}')">${t.name}</span>
+                            <span class="text-[10px] text-slate-400 font-normal shrink-0 ml-1">${t.assignee}</span>
+                        </div>
+                        <div class="flex relative flex-1 h-full items-center">
+                            <div class="absolute h-5 ${barBg} text-white text-[10px] font-bold rounded-full shadow-xs flex items-center px-2 cursor-pointer transition hover:opacity-90 overflow-hidden" 
+                                 style="left: ${leftOffset}px; width: ${barWidth}px;" 
+                                 onclick="openTaskModal('${t.id}')"
+                                 title="${t.name} (${t.progress}%)">
+                                <span class="truncate">${t.progress}%</span>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            });
+
+            container.innerHTML = `
+            <div class="inline-block min-w-full">
+                <div class="flex border-b border-slate-200 text-xs bg-slate-50 sticky top-0 z-20">
+                    <div class="w-56 shrink-0 p-2 font-bold text-slate-700 border-r sticky left-0 bg-slate-50 z-30">업무명 / 담당자</div>
+                    <div class="flex">${headerDaysHtml}</div>
+                </div>
+                <div>${bodyHtml}</div>
+            </div>`;
+        }
+
+        function renderAdminCharts() {
+            if (currentUser.role !== 'ADMIN') return;
+
+            const depts = getUniqueDepartments();
+            const deptDone = {};
+            const deptTotal = {};
+
+            depts.forEach(d => { deptDone[d] = 0; deptTotal[d] = 0; });
+
+            let totalDone = 0;
+            let totalOngoing = 0;
+            let totalWarning = 0;
+            let totalExpired = 0;
+
+            const today = new Date().toISOString().split('T')[0];
+
+            tasks.forEach(t => {
+                if(deptTotal[t.dept] !== undefined) deptTotal[t.dept]++;
+                if(t.progress === 100) {
+                    if(deptDone[t.dept] !== undefined) deptDone[t.dept]++;
+                    totalDone++;
+                } else {
+                    totalOngoing++;
+                    const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                    if(diffDays < 0) totalExpired++;
+                    else if(diffDays <= 3) totalWarning++;
+                }
+            });
+
+            const deptLabels = depts;
+            const deptRates = depts.map(d => deptTotal[d] > 0 ? Math.round((deptDone[d] / deptTotal[d]) * 100) : 0);
+
+            // 1. 부서별 완료율 차트
+            const ctxDept = document.getElementById('deptProgressChart');
+            if (ctxDept) {
+                if (deptChartInstance) deptChartInstance.destroy();
+                deptChartInstance = new Chart(ctxDept, {
+                    type: 'bar',
+                    data: {
+                        labels: deptLabels,
+                        datasets: [{
+                            label: '달성률 (%)',
+                            data: deptRates,
+                            backgroundColor: 'rgba(79, 70, 229, 0.85)',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { y: { min: 0, max: 100 } },
+                        plugins: {
+                            legend: { display: false },
+                            datalabels: {
+                                color: '#fff',
+                                font: { weight: 'bold', size: 10 },
+                                formatter: (val) => val + '%'
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 2. 전체 상태 비율 파이 차트
+            const ctxStatus = document.getElementById('statusPieChart');
+            if (ctxStatus) {
+                if (statusChartInstance) statusChartInstance.destroy();
+                statusChartInstance = new Chart(ctxStatus, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['완료', '진행중', '임박', '만료'],
+                        datasets: [{
+                            data: [totalDone, totalOngoing, totalWarning, totalExpired],
+                            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                            datalabels: {
+                                color: '#fff',
+                                font: { weight: 'bold', size: 10 },
+                                formatter: (val, ctx) => {
+                                    const sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    if(sum === 0 || val === 0) return '';
+                                    return Math.round((val / sum) * 100) + '%';
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function openTaskModal(taskId = null) {
+            currentOpenTaskId = taskId;
+            tempFiles = [];
+            
+            const modal = document.getElementById('taskModal');
+            const assignSelect = document.getElementById('taskAssignee');
+            
+            let assignHtml = '';
+            registeredUsers.forEach(u => {
+                assignHtml += `<option value="${u.name}">${u.name} (${u.dept || '부서미지정'})</option>`;
+            });
+            assignSelect.innerHTML = assignHtml;
+
+            if (taskId) {
+                const t = tasks.find(item => item.id === taskId);
+                if (!t) return;
+
+                document.getElementById('modalTitle').innerText = '업무 상세 / 수정';
+                document.getElementById('taskId').value = t.id;
+                document.getElementById('taskName').value = t.name;
+                document.getElementById('taskDesc').value = t.desc || '';
+                document.getElementById('taskDept').value = t.dept;
+                document.getElementById('taskAssignee').value = t.assignee;
+                document.getElementById('taskStartDate').value = t.startDate || t.endDate;
+                document.getElementById('taskEndDate').value = t.endDate;
+                document.getElementById('taskProgress').value = t.progress;
+                document.getElementById('progressVal').innerText = t.progress + '%';
+
+                tempFiles = [...(t.files || [])];
+                renderTempFiles();
+
+                document.getElementById('btnDeleteTask').classList.remove('hidden');
+                document.getElementById('commentSection').classList.remove('hidden');
+                document.getElementById('batchTaskUploadSection').classList.add('hidden');
+
+                renderComments(t);
+            } else {
+                document.getElementById('modalTitle').innerText = '새 업무 추가';
+                document.getElementById('taskForm').reset();
+                document.getElementById('taskId').value = '';
+                
+                const todayStr = new Date().toISOString().split('T')[0];
+                document.getElementById('taskStartDate').value = todayStr;
+                document.getElementById('taskEndDate').value = todayStr;
+                document.getElementById('progressVal').innerText = '0%';
+
+                if(currentUser.dept) document.getElementById('taskDept').value = currentUser.dept;
+                if(currentUser.name && currentUser.role !== 'ADMIN') document.getElementById('taskAssignee').value = currentUser.name;
+
+                renderTempFiles();
+
+                document.getElementById('btnDeleteTask').classList.add('hidden');
+                document.getElementById('commentSection').classList.add('hidden');
+                document.getElementById('batchTaskUploadSection').classList.remove('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeTaskModal() {
+            const modal = document.getElementById('taskModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            currentOpenTaskId = null;
+        }
+
+        function saveTask(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('taskId').value;
+            const name = document.getElementById('taskName').value.trim();
+            const desc = document.getElementById('taskDesc').value.trim();
+            const dept = document.getElementById('taskDept').value;
+            const assignee = document.getElementById('taskAssignee').value;
+            const startDate = document.getElementById('taskStartDate').value;
+            const endDate = document.getElementById('taskEndDate').value;
+            const progress = parseInt(document.getElementById('taskProgress').value);
+
+            if (startDate > endDate) {
+                return alert('시작일이 마감일보다 늦을 수 없습니다.');
+            }
+
+            if (id) {
+                const idx = tasks.findIndex(t => t.id === id);
+                if (idx !== -1) {
+                    tasks[idx] = {
+                        ...tasks[idx],
+                        name, desc, dept, assignee, startDate, endDate, progress,
+                        files: [...tempFiles]
+                    };
+                    addLog(`업무 수정: "${name}"`);
+                }
+            } else {
+                const newTask = {
+                    id: Date.now().toString(),
+                    name, desc, dept, assignee, startDate, endDate, progress,
+                    files: [...tempFiles],
+                    comments: []
+                };
+                tasks.push(newTask);
+                addLog(`신규 업무 등록: "${name}"`);
+            }
+
+            localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
+            closeTaskModal();
+            updateNotifications();
+            render();
+        }
+
+        function deleteCurrentTask() {
+            const id = document.getElementById('taskId').value;
+            if (!id) return;
+
+            if (confirm('이 업무를 정말 삭제하시겠습니까?')) {
+                const t = tasks.find(item => item.id === id);
+                tasks = tasks.filter(item => item.id !== id);
+                localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
+                addLog(`업무 삭제: "${t ? t.name : id}"`);
+                closeTaskModal();
+                updateNotifications();
+                render();
+            }
+        }
+
+        function renderComments(task) {
+            const list = document.getElementById('commentList');
+            if(!list) return;
+
+            const comments = task.comments || [];
+            if (comments.length === 0) {
+                list.innerHTML = `<div class="text-center py-4 text-slate-400 text-xs"><i class="fa-solid fa-comments text-lg block mb-1"></i>아직 등록된 메시지가 없습니다.<br><span class="text-amber-600 font-bold underline">클릭하여 카카오톡 스타일 채팅창을 열어보세요!</span></div>`;
+                return;
+            }
+
+            list.innerHTML = comments.map(c => `
+                <div class="bg-white p-2 rounded border border-slate-200 text-xs shadow-2xs">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-slate-800">${c.user}</span>
+                        <span class="text-[9px] text-slate-400">${c.date}</span>
+                    </div>
+                    <p class="text-slate-600 text-[11px]">${c.text}</p>
+                </div>
+            `).join('');
+        }
+
+        function openChatWindow(taskId) {
+            if (!taskId) return;
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const chatWindow = window.open('', `TaskChat_${taskId}`, 'width=420,height=620,resizable=yes,scrollbars=yes');
+            
+            const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <title>${task.name} - 코멘트 대화방</title>
+                <script src="https://cdn.tailwindcss.com"><\/script>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                <style>
+                    body { font-family: sans-serif; background-color: #bacee0; }
+                    .chat-scroll::-webkit-scrollbar { width: 4px; }
+                    .chat-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
+                </style>
+            </head>
+            <body class="flex flex-col h-screen">
+                <div class="bg-slate-800 text-white p-3 flex justify-between items-center shadow-md shrink-0">
+                    <div>
+                        <h3 class="font-bold text-sm truncate max-w-[280px]">${task.name}</h3>
+                        <p class="text-[10px] text-slate-300">담당자: ${task.assignee} | 부서: ${task.dept}</p>
+                    </div>
+                    <span class="bg-amber-400 text-slate-900 font-bold text-[10px] px-2 py-0.5 rounded-full">카톡 모드</span>
+                </div>
+
+                <div id="chatMessages" class="flex-1 p-3 overflow-y-auto space-y-3 chat-scroll"></div>
+
+                <div class="p-2 bg-white border-t border-slate-200 shrink-0 flex items-center gap-1.5">
+                    <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." onkeypress="if(event.key==='Enter') sendChat()" class="flex-1 border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                    <button onclick="sendChat()" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-3 py-2 rounded-lg text-xs shadow transition">전송</button>
+                </div>
+
+                <script>
+                    const taskId = "${taskId}";
+                    const currentUser = ${JSON.stringify(currentUser)};
+
+                    function loadChat() {
+                        const tasks = JSON.parse(localStorage.getItem('schoolTasksV2')) || [];
+                        const curTask = tasks.find(t => t.id === taskId);
+                        if (!curTask) return;
+
+                        const container = document.getElementById('chatMessages');
+                        const comments = curTask.comments || [];
+
+                        if(comments.length === 0) {
+                            container.innerHTML = '<div class="text-center text-slate-500 text-xs py-10">대화 내역이 없습니다.<br>첫 메시지를 남겨보세요!</div>';
+                            return;
+                        }
+
+                        container.innerHTML = comments.map(c => {
+                            const isMe = (c.user === currentUser.name);
+                            return isMe ? \`
+                                <div class="flex flex-col items-end">
+                                    <div class="flex items-end gap-1">
+                                        <span class="text-[9px] text-slate-500">\${c.date}</span>
+                                        <div class="bg-amber-300 text-slate-900 p-2 rounded-l-lg rounded-br-lg text-xs max-w-[240px] shadow-xs break-words font-medium">
+                                            \${c.text}
+                                        </div>
+                                    </div>
+                                </div>
+                            \` : \`
+                                <div class="flex flex-col items-start">
+                                    <span class="text-[10px] font-bold text-slate-700 mb-0.5 ml-1">\${c.user}</span>
+                                    <div class="flex items-end gap-1">
+                                        <div class="bg-white text-slate-900 p-2 rounded-r-lg rounded-bl-lg text-xs max-w-[240px] shadow-xs break-words font-medium">
+                                            \${c.text}
+                                        </div>
+                                        <span class="text-[9px] text-slate-500">\${c.date}</span>
+                                    </div>
+                                </div>
+                            \`;
+                        }).join('');
+
+                        container.scrollTop = container.scrollHeight;
+                    }
+
+                    function sendChat() {
+                        const input = document.getElementById('chatInput');
+                        const text = input.value.trim();
+                        if (!text) return;
+
+                        const tasks = JSON.parse(localStorage.getItem('schoolTasksV2')) || [];
+                        const curTask = tasks.find(t => t.id === taskId);
+                        if (!curTask) return;
+
+                        const now = new Date();
+                        const timeStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+
+                        if (!curTask.comments) curTask.comments = [];
+                        curTask.comments.push({
+                            user: currentUser.name,
+                            text: text,
+                            date: timeStr
+                        });
+
+                        localStorage.setItem('schoolTasksV2', JSON.stringify(tasks));
+                        input.value = '';
+                        loadChat();
+
+                        if (window.opener && !window.opener.closed) {
+                            window.opener.location.reload();
+                        }
+                    }
+
+                    window.onload = loadChat;
+                    window.addEventListener('storage', loadChat);
+                <\/script>
+            </body>
+            </html>
+            `;
+
+            chatWindow.document.open();
+            chatWindow.document.write(htmlContent);
+            chatWindow.document.close();
+        }
+>>>>>>> parent of a391dca (Add files via upload)
     </script>
 </body>
 </html>
