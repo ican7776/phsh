@@ -1,399 +1,2435 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>학생·성적 종합 정보시스템</title>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #f4f6f9; color: #333; padding-bottom: 30px; }
-    
-    header { background: #004085; color: white; padding: 14px; text-align: center; font-size: 18px; font-weight: bold; }
-    .container { padding: 12px; max-width: 600px; margin: 0 auto; }
-
-    /* 최상단 역할 구분 탭 (교사 / 학부모 / 학생) */
-    .top-role-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-    .role-btn { flex: 1; padding: 12px; border: 1px solid #ccc; background: #e9ecef; font-size: 15px; font-weight: bold; color: #495057; border-radius: 6px; cursor: pointer; text-align: center; }
-    .role-btn.active { background: #004085; color: white; border-color: #004085; }
-
-    /* 로그인/인증 카드 */
-    .card { background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 12px; }
-    .card h3 { font-size: 15px; color: #004085; margin-bottom: 10px; }
-    .input-row { display: flex; gap: 6px; margin-top: 8px; }
-    .input-row input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-    .btn { padding: 10px 14px; background: #004085; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
-    .btn-green { background: #28a745; }
-
-    /* 학생 선택 드롭다운 */
-    .student-dropdown-box { background: white; padding: 12px; border-radius: 8px; border: 1px solid #004085; margin-bottom: 12px; }
-    .student-dropdown-box label { font-size: 12px; font-weight: bold; color: #004085; display: block; margin-bottom: 4px; }
-    .student-select { width: 100%; padding: 10px; font-size: 15px; font-weight: bold; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-
-    /* 💡 중요: 성적 추이 그래프 영역 (기본 숨김: display: none) */
-    .graph-card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 12px; display: none; }
-    .graph-title { font-size: 14px; font-weight: bold; color: #004085; margin-bottom: 8px; text-align: center; }
-    .chart-container { position: relative; width: 100%; height: 220px; }
-
-    /* 기능 서브 탭 */
-    .sub-tabs { display: flex; background: #e9ecef; border-bottom: 2px solid #004085; border-radius: 6px 6px 0 0; overflow-x: auto; }
-    .sub-tab-btn { flex: 1; min-width: 80px; padding: 10px 6px; font-size: 13px; font-weight: bold; border: none; background: transparent; color: #555; cursor: pointer; text-align: center; white-space: nowrap; }
-    .sub-tab-btn.active { background: #004085; color: white; border-radius: 6px 6px 0 0; }
-
-    /* 하단 화면 영역 */
-    .tab-view-card { background: white; padding: 14px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); min-height: 200px; }
-    .data-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #eee; font-size: 13px; }
-    .data-row:last-child { border-bottom: none; }
-    .data-label { color: #666; }
-    .data-val { font-weight: bold; color: #222; }
-    .item-card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 10px; margin-bottom: 8px; font-size: 13px; }
-  </style>
-</head>
-<body>
-
-  <header>포항세화고 학생·성적 종합시스템</header>
-
-  <div class="container">
-
-    <!-- 최상단 메뉴: [교사] [학부모] [학생] -->
-    <div class="top-role-tabs">
-      <button class="role-btn active" onclick="selectRole('teacher')">교사</button>
-      <button class="role-btn" onclick="selectRole('parent')">학부모</button>
-      <button class="role-btn" onclick="selectRole('student')">학생</button>
-    </div>
-
-    <!-- 교사 로그인 카드 -->
-    <div id="teacherLoginCard" class="card">
-      <h3>🔒 교사 로그인 (관리자 전용)</h3>
-      <div class="input-row">
-        <input type="text" id="teacherId" placeholder="아이디 (admin)">
-        <input type="password" id="teacherPw" placeholder="비밀번호 (admin)">
-        <button class="btn" onclick="loginTeacher()">로그인</button>
-      </div>
-      <p id="loginMsg" style="font-size:12px; color:red; margin-top:5px;"></p>
-    </div>
-
-    <!-- 학부모/학생 본인인증 카드 -->
-    <div id="authLoginCard" class="card" style="display:none;">
-      <h3 id="authTitle">본인 인증</h3>
-      <div class="input-row">
-        <input type="tel" id="phoneInput" placeholder="휴대폰 번호 (-없이 입력)">
-        <button class="btn" onclick="sendAuthCode()">인증 요청</button>
-      </div>
-      <div id="authCodeRow" class="input-row" style="display:none;">
-        <input type="number" id="codeInput" placeholder="인증번호 6자리">
-        <button class="btn btn-green" onclick="verifyAuthCode()">확인</button>
-      </div>
-      <p id="authMsg" style="font-size:12px; margin-top:5px;"></p>
-    </div>
-
-    <!-- 로그인 성공 후 전체 대시보드 -->
-    <div id="mainDashboard" style="display:none;">
-
-      <!-- 학생 선택 드롭다운 -->
-      <div class="student-dropdown-box">
-        <label id="selectLabel">학생 선택 (전체 100명 목록)</label>
-        <select id="studentSelect" class="student-select" onchange="onStudentSelectChange()">
-          <!-- 동적 학생 목록 -->
-        </select>
-      </div>
-
-      <!-- 성적 추이 그래프 영역 (내신/모의고사 탭 클릭 시에만 display: block 처리) -->
-      <div class="graph-card" id="graphCard">
-        <div class="graph-title" id="graphTitle">📈 성적 추이 그래프</div>
-        <div class="chart-container">
-          <canvas id="scoreChart"></canvas>
-        </div>
-      </div>
-
-      <!-- 기능 서브 탭 -->
-      <div class="sub-tabs">
-        <button class="sub-tab-btn active" onclick="switchSubTab('info')">학생기본정보</button>
-        <button class="sub-tab-btn" onclick="switchSubTab('grade')">내신성적</button>
-        <button class="sub-tab-btn" onclick="switchSubTab('mock')">모의고사</button>
-        <button class="sub-tab-btn" onclick="switchSubTab('etc')">출결/창체/진로</button>
-      </div>
-
-      <!-- 하단 화면 영역 -->
-      <div class="tab-view-card" id="tabViewArea"></div>
-
-    </div>
-
-  </div>
-
-  <script src="data.js"></script>
-  <script>
-    let currentRole = 'teacher';
-    let isTeacherLoggedIn = false;
-    let selectedStudentId = null;
-    let authCode = '';
-    let currentSubTab = 'info';
-    let chartInstance = null;
-
-    window.onload = function() {
-      selectRole('teacher');
-    };
-
-    function selectRole(role) {
-      currentRole = role;
-      document.querySelectorAll('.role-btn').forEach((btn, idx) => {
-        btn.classList.toggle('active', (role==='teacher'&&idx===0)||(role==='parent'&&idx===1)||(role==='student'&&idx===2));
-      });
-
-      const teacherCard = document.getElementById('teacherLoginCard');
-      const authCard = document.getElementById('authLoginCard');
-      const dashboard = document.getElementById('mainDashboard');
-
-      dashboard.style.display = 'none';
-
-      if (role === 'teacher') {
-        authCard.style.display = 'none';
-        if (isTeacherLoggedIn) {
-          dashboard.style.display = 'block';
-          initTeacherDropdown();
-        } else {
-          teacherCard.style.display = 'block';
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sewha Workspace</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (엑셀 읽기/쓰기) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js (관리자 시각화 차트) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js DataLabels Plugin (차트 숫자/퍼센트 표시 플러그인) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        html { font-size: 18px; }
+        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        
+        .stat-card-active {
+            ring-width: 2px;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
-      } else {
-        teacherCard.style.display = 'none';
-        authCard.style.display = 'block';
-        document.getElementById('authTitle').innerText = role === 'parent' ? '👨‍👩‍👧 학부모 본인 인증' : '👨‍🎓 학생 본인 인증';
-        document.getElementById('phoneInput').value = role === 'parent' ? '010-2001-2222' : '010-1001-1111';
-        document.getElementById('authCodeRow').style.display = 'none';
-        document.getElementById('authMsg').innerText = '';
-      }
-    }
+        .drag-over {
+            border-color: #4f46e5 !important;
+            background-color: #e0e7ff !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-indigo-100 selection:text-indigo-900">
 
-    function loginTeacher() {
-      const id = document.getElementById('teacherId').value.trim();
-      const pw = document.getElementById('teacherPw').value.trim();
+    <!-- 로고 Base64 전역 인라인 스크립트 용 -->
+    <script>
+        const SEWHA_LOGO_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAAAAA..."; 
+    </script>
 
-      if (id === 'admin' && pw === 'admin') {
-        isTeacherLoggedIn = true;
-        document.getElementById('teacherLoginCard').style.display = 'none';
-        document.getElementById('mainDashboard').style.display = 'block';
-        initTeacherDropdown();
-      } else {
-        document.getElementById('loginMsg').innerText = '아이디 또는 비밀번호가 올바르지 않습니다. (admin / admin)';
-      }
-    }
+    <!-- 로딩 인디케이터 오버레이 -->
+    <div id="syncLoading" class="fixed inset-0 bg-slate-900/60 z-[200] hidden flex-col items-center justify-center text-white space-y-3">
+        <i class="fa-solid fa-circle-notch fa-spin text-4xl text-indigo-400"></i>
+        <p class="text-sm font-bold tracking-wide">구글 시트 클라우드 동기화 중...</p>
+    </div>
 
-    function sendAuthCode() {
-      const phone = document.getElementById('phoneInput').value.trim();
-      let st = null;
-      if (currentRole === 'student') st = excelData["01_학생명렬표"].rows.find(s => s.학생휴대폰 === phone);
-      else st = excelData["01_학생명렬표"].rows.find(s => s.보호자1_휴대폰 === phone);
+    <!-- 전역 공지사항 배너 -->
+    <div id="noticeBanner" class="bg-indigo-800 text-white px-3 py-1.5 text-xs flex justify-between items-center shadow-inner">
+        <div class="flex items-center space-x-1.5 truncate">
+            <span class="bg-amber-400 text-slate-900 font-bold px-1.5 py-0.5 rounded-full text-[10px] shrink-0">공지</span>
+            <span id="noticeText" class="truncate font-medium text-[11px] sm:text-xs">데이터를 실시간 로드 중입니다...</span>
+        </div>
+        <button id="btnEditNotice" onclick="editNotice()" class="hidden text-[10px] sm:text-[11px] bg-indigo-700 hover:bg-indigo-600 px-2 py-0.5 rounded font-bold whitespace-nowrap ml-1 shrink-0">
+            <i class="fa-solid fa-pen mr-0.5"></i>수정
+        </button>
+    </div>
 
-      if (!st) {
-        document.getElementById('authMsg').style.color = 'red';
-        document.getElementById('authMsg').innerText = '등록된 연락처가 없습니다.';
-        return;
-      }
+    <!-- 1. 로그인 모달 / 오버레이 -->
+    <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+            
+            <div class="flex justify-center mb-3">
+                <svg class="w-16 h-16 sm:w-20 sm:h-20 drop-shadow-md" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 100,10 L 145,55 C 190,100 160,185 100,190 C 40,185 10,100 55,55 Z" stroke="#E5C158" stroke-width="8" fill="none"/>
+                    <path d="M 100,20 L 138,58 L 100,96 L 62,58 Z" fill="#323393" stroke="#E5C158" stroke-width="5"/>
+                    <circle cx="100" cy="58" r="7" fill="#E5C158"/>
+                    <line x1="100" y1="20" x2="100" y2="51" stroke="#E5C158" stroke-width="5"/>
+                    <path d="M 62,60 L 100,98 L 138,60 L 138,155 C 100,180 100,180 62,155 Z" stroke="#E5C158" stroke-width="4" fill="none"/>
+                    <line x1="100" y1="98" x2="100" y2="182" stroke="#E5C158" stroke-width="4"/>
+                    <path d="M 72,80 L 72,145 M 82,100 L 82,140 M 92,90 L 92,145 M 68,125 L 96,125" stroke="#E5C158" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M 108,85 L 128,145 M 108,110 L 132,110 M 120,78 L 120,100 M 112,125 L 130,125 L 130,140 L 112,140 Z" stroke="#E5C158" stroke-width="3" stroke-linecap="round" fill="none"/>
+                </svg>
+            </div>
 
-      selectedStudentId = st.학번;
-      authCode = Math.floor(100000 + Math.random() * 900000).toString();
-      document.getElementById('authCodeRow').style.display = 'flex';
-      document.getElementById('authMsg').style.color = 'blue';
-      document.getElementById('authMsg').innerText = `[SMS 발송] 인증번호: ${authCode}`;
-    }
+            <h2 class="text-lg sm:text-xl font-bold text-slate-800 mb-2">Sewha Workspace 로그인</h2>
+            
+            <div class="flex border-b border-slate-200 mb-4">
+                <button id="tabUserBtn" onclick="switchLoginTab('user')" class="flex-1 py-2 font-bold text-xs sm:text-sm text-indigo-600 border-b-2 border-indigo-600">일반 사용자</button>
+                <button id="tabAdminBtn" onclick="switchLoginTab('admin')" class="flex-1 py-2 font-bold text-xs sm:text-sm text-slate-400">관리자</button>
+            </div>
 
-    function verifyAuthCode() {
-      if (document.getElementById('codeInput').value.trim() === authCode) {
-        alert('인증되었습니다.');
-        document.getElementById('authLoginCard').style.display = 'none';
-        document.getElementById('mainDashboard').style.display = 'block';
-        
-        const select = document.getElementById('studentSelect');
-        const st = excelData["01_학생명렬표"].rows.find(s => s.학번 === selectedStudentId);
-        select.innerHTML = `<option value="${st.학번}">[${st.학번}] ${st.성명} (본인)</option>`;
-        document.getElementById('selectLabel').innerText = "본인 학생 정보";
-        switchSubTab('info');
-      } else {
-        alert('인증번호가 일치하지 않습니다.');
-      }
-    }
+            <!-- 사용자 로그인 폼 -->
+            <div id="userLoginForm" class="space-y-3">
+                <input type="text" id="loginName" placeholder="성함 (예: 홍길동)" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <input type="password" id="loginUserPw" placeholder="비밀번호 입력 (최초 1234)" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                
+                <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-2 text-left flex items-start gap-1.5">
+                    <i class="fa-solid fa-circle-info text-indigo-600 text-xs mt-0.5 shrink-0"></i>
+                    <p class="text-[11px] text-indigo-900 leading-tight">
+                        최초 접속 시 <b>[1234 임시비번 입력]</b> 후 로그인하시면 새 비밀번호 설정 창으로 이동합니다.
+                    </p>
+                </div>
 
-    function initTeacherDropdown() {
-      const select = document.getElementById('studentSelect');
-      select.innerHTML = '';
-      excelData["01_학생명렬표"].rows.forEach(st => {
-        const opt = document.createElement('option');
-        opt.value = st.학번;
-        opt.innerText = `[${st.학번}] ${st.성명} (${st.반}반 ${st.번호}번)`;
-        select.appendChild(opt);
-      });
-      document.getElementById('selectLabel').innerText = "학생 선택 (전체 100명 목록)";
-      selectedStudentId = excelData["01_학생명렬표"].rows[0].학번;
-      switchSubTab('info');
-    }
+                <button onclick="handleUserLogin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 sm:py-3 rounded-lg transition text-xs sm:text-sm shadow-md">로그인</button>
+            </div>
 
-    function onStudentSelectChange() {
-      selectedStudentId = document.getElementById('studentSelect').value;
-      updateView();
-    }
+            <!-- 관리자 로그인 폼 -->
+            <div id="adminLoginForm" class="space-y-3 hidden">
+                <input type="text" id="adminId" value="admin" placeholder="관리자 ID" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <input type="password" id="adminPw" value="1234" placeholder="비밀번호" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <button onclick="handleAdminLogin()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 sm:py-3 rounded-lg transition text-xs sm:text-sm shadow-md">관리자 로그인</button>
+            </div>
+        </div>
+    </div>
 
-    // 💡 핵심 개선: 서브 탭 변경 시 그래프 상자 숨김/노출 및 차트 생성 제어
-    function switchSubTab(tab) {
-      currentSubTab = tab;
-      document.querySelectorAll('.sub-tab-btn').forEach((btn, idx) => {
-        btn.classList.toggle('active', (tab==='info'&&idx===0)||(tab==='grade'&&idx===1)||(tab==='mock'&&idx===2)||(tab==='etc'&&idx===3));
-      });
+    <!-- 2. 최초 비밀번호 설정 모달 -->
+    <div id="pwSetupModal" class="fixed inset-0 bg-slate-900/80 z-[101] hidden items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center space-y-4">
+            <i class="fa-solid fa-key text-4xl text-amber-500"></i>
+            <h3 class="text-base sm:text-lg font-bold text-slate-800">최초 비밀번호 설정</h3>
+            <p class="text-xs text-slate-500">초기 접속입니다. 안전한 이용을 위해<br>사용하실 비밀번호를 설정해 주세요.</p>
+            <input type="password" id="newPw" placeholder="새 비밀번호" class="w-full px-3 py-2 border rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <input type="password" id="confirmPw" placeholder="비밀번호 확인" class="w-full px-3 py-2 border rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <button onclick="saveNewPassword()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-xs sm:text-sm transition">설정 완료 및 접속</button>
+        </div>
+    </div>
 
-      const graphCard = document.getElementById('graphCard');
+    <!-- 3. 비밀번호 변경 모달 -->
+    <div id="changePwModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-[101]">
+        <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-2xl max-w-sm w-full space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm sm:text-base font-bold text-slate-800"><i class="fa-solid fa-user-gear text-indigo-600 mr-1.5"></i>비밀번호 변경</h3>
+                <button onclick="closeChangePwModal()"><i class="fa-solid fa-xmark text-slate-400 hover:text-slate-600 p-1"></i></button>
+            </div>
+            <div class="space-y-2">
+                <p class="text-[11px] sm:text-xs text-slate-500">현재 비밀번호를 확인 후 새 비밀번호로 변경합니다.</p>
+                <input type="password" id="changeOldPw" placeholder="현재 비밀번호" class="w-full px-3 py-2 border rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <input type="password" id="changeNewPw" placeholder="새 비밀번호" class="w-full px-3 py-2 border rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <input type="password" id="changeConfirmPw" placeholder="새 비밀번호 확인" class="w-full px-3 py-2 border rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+            <div class="flex justify-end gap-2 pt-1">
+                <button onclick="closeChangePwModal()" class="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">취소</button>
+                <button onclick="execChangePassword()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold">수정 완료</button>
+            </div>
+        </div>
+    </div>
 
-      // '내신성적' 또는 '모의고사' 탭일 때만 그래프 상자를 열고 그래프 그리기
-      if (tab === 'grade' || tab === 'mock') {
-        graphCard.style.display = 'block';
-        // DOM 요소가 열린 후 그래프 렌더링을 위해 setTimeout 적용
-        setTimeout(() => {
-          renderChart(selectedStudentId, tab);
-        }, 50);
-      } else {
-        graphCard.style.display = 'none'; // 학생기본정보, 출결/창체/진로 탭에서는 상자 숨김
-      }
+    <!-- 4. 개인 알림 모달 -->
+    <div id="notifModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-[102]">
+        <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-2xl max-w-lg w-full space-y-3">
+            <div class="flex justify-between items-center border-b pb-2.5">
+                <h3 class="text-sm sm:text-base font-bold text-slate-800 flex items-center">
+                    <i class="fa-solid fa-bell text-amber-500 mr-2"></i>내 주요 알림 리스트
+                </h3>
+                <button onclick="closeNotifModal()"><i class="fa-solid fa-xmark text-slate-400 hover:text-slate-600 p-1"></i></button>
+            </div>
 
-      renderSubTabView();
-    }
+            <!-- 알림 관리 컨트롤 툴바 -->
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs">
+                <label class="flex items-center gap-1.5 font-bold text-slate-700 cursor-pointer select-none">
+                    <input type="checkbox" id="selectAllNotifs" onchange="toggleSelectAllNotifs(this)" class="accent-indigo-600 rounded">
+                    <span>전체 선택</span>
+                </label>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="markSelectedNotifsAsRead()" class="bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold transition">
+                        <i class="fa-solid fa-check text-indigo-500 mr-0.5"></i> 선택 읽음
+                    </button>
+                    <button onclick="markAllNotifsAsRead()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[11px] font-bold transition">
+                        전체 읽음
+                    </button>
+                    <button onclick="deleteSelectedNotifs()" class="bg-white hover:bg-red-50 text-red-600 border border-red-200 px-2 py-1 rounded text-[11px] font-bold transition ml-1">
+                        <i class="fa-solid fa-trash mr-0.5"></i> 선택 삭제
+                    </button>
+                    <button onclick="deleteAllNotifs()" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[11px] font-bold transition">
+                        전체 삭제
+                    </button>
+                </div>
+            </div>
 
-    function updateView() {
-      renderSubTabView();
-      if (currentSubTab === 'grade' || currentSubTab === 'mock') {
-        renderChart(selectedStudentId, currentSubTab);
-      }
-    }
+            <div id="notifListContainer" class="space-y-2 max-h-72 overflow-y-auto custom-scrollbar text-xs"></div>
 
-    function renderSubTabView() {
-      const view = document.getElementById('tabViewArea');
-      const st = excelData["01_학생명렬표"].rows.find(r => r.학번 === selectedStudentId);
-      if (!st) return;
+            <div class="text-right pt-2 border-t">
+                <button onclick="closeNotifModal()" class="px-4 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900">닫기</button>
+            </div>
+        </div>
+    </div>
 
-      if (currentSubTab === 'info') {
-        view.innerHTML = `
-          <div class="data-row"><span class="data-label">성명/성별</span><span class="data-val">${st.성명} (${st.성별})</span></div>
-          <div class="data-row"><span class="data-label">학번 정보</span><span class="data-val">${st.학번} (${st.학년}학년 ${st.반}반 ${st.번호}번)</span></div>
-          <div class="data-row"><span class="data-label">생년월일</span><span class="data-val">${st.생년월일}</span></div>
-          <div class="data-row"><span class="data-label">학생 연락처</span><span class="data-val">${st.학생휴대폰}</span></div>
-          <div class="data-row"><span class="data-label">보호자 연락처</span><span class="data-val">${st.보호자1_성명} (${st.보호자1_관계}) - ${st.보호자1_휴대폰}</span></div>
-        `;
-      } else if (currentSubTab === 'grade') {
-        const grades = excelData["03_내신성적"].rows.filter(r => r.학번 === selectedStudentId);
-        view.innerHTML = grades.map(g => `
-          <div class="item-card">
-            <div class="data-row"><span class="data-label">과목명</span><span class="data-val">${g.과목명} (${g.교과})</span></div>
-            <div class="data-row"><span class="data-label">원점수 / 석차등급</span><span class="data-val">${g.원점수}점 / ${g.석차등급}등급</span></div>
-            <div class="data-row"><span class="data-label">과목평균 / 성취도</span><span class="data-val">${g.과목평균}점 / 성취도 ${g.성취도}</span></div>
-          </div>
-        `).join('');
-      } else if (currentSubTab === 'mock') {
-        const mocks = excelData["04_모의고사성적"].rows.filter(r => r.학번 === selectedStudentId);
-        view.innerHTML = mocks.map(m => `
-          <div class="item-card">
-            <div class="data-row"><span class="data-label">시행년월 / 영역</span><span class="data-val">${m.시행년월} [${m.영역}]</span></div>
-            <div class="data-row"><span class="data-label">표준점수 / 백분위</span><span class="data-val">${m.표준점수}점 / 백분위 ${m.백분위}%</span></div>
-            <div class="data-row"><span class="data-label">등급 / 석차</span><span class="data-val">${m.등급}등급 (교내 ${m.학교내석차}위)</span></div>
-          </div>
-        `).join('');
-      } else if (currentSubTab === 'etc') {
-        const att = excelData["05_출결"].rows.find(r => r.학번 === selectedStudentId) || {};
-        const act = excelData["06_창의적체험활동"].rows.find(r => r.학번 === selectedStudentId) || {};
-        const car = excelData["08_진로희망"].rows.find(r => r.학번 === selectedStudentId) || {};
+    <!-- 5. 관리자에게 메시지 남기기 모달 -->
+    <div id="contactAdminModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-[102]">
+        <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-3">
+            <div class="flex justify-between items-center border-b pb-2.5">
+                <h3 class="text-sm sm:text-base font-bold text-slate-800 flex items-center"><i class="fa-solid fa-paper-plane text-indigo-600 mr-2"></i>최고 관리자에게 메시지 남기기</h3>
+                <button onclick="closeContactAdminModal()"><i class="fa-solid fa-xmark text-slate-400 hover:text-slate-600 p-1"></i></button>
+            </div>
+            <p class="text-[11px] text-slate-500">시스템 이용 문의, 건의사항 및 수정요청을 관리자에게 직접 전달합니다.</p>
+            <div class="space-y-2">
+                <input type="text" id="contactAdminTitle" placeholder="제목 (예: 신규 부서 추가 요청)" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <textarea id="contactAdminBody" rows="4" placeholder="관리자에게 남길 내용을 자세히 입력해 주세요..." class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none custom-scrollbar"></textarea>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t">
+                <button onclick="closeContactAdminModal()" class="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">취소</button>
+                <button onclick="sendMsgToAdmin()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold">전송하기</button>
+            </div>
+        </div>
+    </div>
 
-        view.innerHTML = `
-          <div class="item-card">
-            <b>📅 출결 기록</b>
-            <div class="data-row"><span class="data-label">수업일수/결석</span><span class="data-val">${att.수업일수 || 190}일 / 질병 ${att.결석_질병 || 0}회</span></div>
-          </div>
-          <div class="item-card">
-            <b>🎨 창의적 체험활동</b>
-            <p style="font-size:12px; color:#555; margin-top:4px;">${act.활동명 || '수리탐구반'}: ${act.주요내용 || '프로젝트 탐구'}</p>
-          </div>
-          <div class="item-card">
-            <b>🚀 진로 희망</b>
-            <div class="data-row"><span class="data-label">희망학과/대학</span><span class="data-val">${car.희망학과1 || '컴퓨터공학'} (${car.희망대학1 || '포항공대'})</span></div>
-          </div>
-        `;
-      }
-    }
+    <!-- Header -->
+    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2 sm:space-x-2.5">
+                <svg class="w-6 h-6 sm:w-7 sm:h-7 shrink-0" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 100,10 L 145,55 C 190,100 160,185 100,190 C 40,185 10,100 55,55 Z" stroke="#E5C158" stroke-width="10" fill="none"/>
+                    <path d="M 100,20 L 138,58 L 100,96 L 62,58 Z" fill="#323393" stroke="#E5C158" stroke-width="5"/>
+                    <circle cx="100" cy="58" r="7" fill="#E5C158"/>
+                    <line x1="100" y1="20" x2="100" y2="51" stroke="#E5C158" stroke-width="5"/>
+                    <path d="M 62,60 L 100,98 L 138,60 L 138,155 C 100,180 100,180 62,155 Z" stroke="#E5C158" stroke-width="5" fill="none"/>
+                    <line x1="100" y1="98" x2="100" y2="182" stroke="#E5C158" stroke-width="5"/>
+                    <path d="M 72,80 L 72,145 M 82,100 L 82,140 M 92,90 L 92,145 M 68,125 L 96,125" stroke="#E5C158" stroke-width="4" stroke-linecap="round"/>
+                    <path d="M 108,85 L 128,145 M 108,110 L 132,110 M 120,78 L 120,100 M 112,125 L 130,125 L 130,140 L 112,140 Z" stroke="#E5C158" stroke-width="4" stroke-linecap="round" fill="none"/>
+                </svg>
+                <h1 class="text-sm sm:text-lg font-bold truncate">Sewha Workspace</h1>
+            </div>
+            <div class="flex items-center gap-1.5 sm:gap-3">
+                <button onclick="openNotifModal()" class="relative p-1.5 text-indigo-200 hover:text-white transition">
+                    <i class="fa-solid fa-bell text-base sm:text-lg"></i>
+                    <span id="notifBadge" class="hidden absolute top-0.5 right-0.5 bg-red-500 text-white text-[8px] sm:text-[9px] font-bold px-1.5 py-0.2 rounded-full min-w-[15px] text-center">0</span>
+                </button>
 
-    // 💡 차트 생성 함수 (내신/모의고사별 차트 시각화)
-    function renderChart(stId, tabType) {
-      const ctx = document.getElementById('scoreChart').getContext('2d');
-      const graphTitle = document.getElementById('graphTitle');
-      if (chartInstance) chartInstance.destroy();
+                <button id="btnContactAdmin" onclick="openContactAdminModal()" class="text-[11px] sm:text-xs bg-indigo-700 hover:bg-indigo-600 text-white font-bold px-2.5 py-1.5 rounded-lg shadow transition flex items-center gap-1">
+                    <i class="fa-solid fa-envelope"></i> <span class="hidden md:inline">관리자 문의</span>
+                </button>
 
-      if (tabType === 'grade') {
-        graphTitle.innerText = "📈 내신 과목별 성적 추이 (원점수 & 석차등급)";
-        const grades = excelData["03_내신성적"].rows.filter(r => r.학번 === stId);
-        
-        chartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: grades.map(g => g.과목명),
-            datasets: [
-              {
-                label: '원점수',
-                data: grades.map(g => parseFloat(g.원점수)),
-                backgroundColor: 'rgba(0, 64, 133, 0.75)',
-                yAxisID: 'y'
-              },
-              {
-                label: '석차등급',
-                data: grades.map(g => parseFloat(g.석차등급)),
-                type: 'line',
-                borderColor: '#dc3545',
-                backgroundColor: '#dc3545',
-                borderWidth: 2,
-                yAxisID: 'y1'
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              y: { beginAtZero: true, max: 100, title: { display: true, text: '점수' } },
-              y1: { reverse: true, min: 1, max: 9, position: 'right', title: { display: true, text: '등급' }, grid: { drawOnChartArea: false } }
+                <span class="text-xs sm:text-sm text-indigo-200 cursor-pointer hover:underline flex items-center gap-1 max-w-[120px] sm:max-w-none truncate" onclick="openChangePwModal()" title="클릭 시 비밀번호 변경">
+                    <i class="fa-solid fa-user-circle"></i> <span id="currentUserDisplay" class="truncate">로그인</span>
+                </span>
+
+                <button id="btnBackupManagement" onclick="openBackupModal()" class="hidden text-[11px] sm:text-xs bg-purple-700 hover:bg-purple-600 text-white font-bold px-2.5 py-1.5 rounded-lg shadow transition">
+                    <i class="fa-solid fa-file-excel"></i> <span class="hidden md:inline">백업/복원</span>
+                </button>
+                <button id="btnUserManagement" onclick="openUserModal()" class="hidden text-[11px] sm:text-xs bg-indigo-700 hover:bg-indigo-600 text-white font-bold px-2.5 py-1.5 rounded-lg shadow transition">
+                    <i class="fa-solid fa-users-gear"></i> <span class="hidden md:inline">회원/알림/로그</span>
+                </button>
+                <button onclick="logout()" class="text-[11px] sm:text-xs bg-indigo-800 px-2 py-1.5 rounded-lg hover:bg-indigo-700 font-medium transition whitespace-nowrap">로그아웃</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+
+        <!-- Dashboard Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+            <div id="cardAll" onclick="setStatusFilter('ALL')" class="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex justify-between items-center cursor-pointer hover:border-slate-400 transition">
+                <div>
+                    <p class="text-[11px] sm:text-xs font-semibold text-slate-500" id="statTitleTotal">내 등록 업무</p>
+                    <p class="text-xl sm:text-2xl font-bold text-slate-800 mt-0.5" id="statTotal">0</p>
+                </div>
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 text-sm sm:text-base"><i class="fa-solid fa-list-check"></i></div>
+            </div>
+            <div id="cardOngoing" onclick="setStatusFilter('ONGOING')" class="bg-white p-3 sm:p-4 rounded-xl border border-blue-200 shadow-xs flex justify-between items-center cursor-pointer hover:border-blue-400 transition">
+                <div>
+                    <p class="text-[11px] sm:text-xs font-semibold text-blue-600" id="statTitleOngoing">내 진행 중 업무</p>
+                    <p class="text-xl sm:text-2xl font-bold text-blue-700 mt-0.5" id="statOngoing">0</p>
+                </div>
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm sm:text-base"><i class="fa-solid fa-spinner"></i></div>
+            </div>
+            <div id="cardWarning" onclick="setStatusFilter('WARNING')" class="bg-white p-3 sm:p-4 rounded-xl border border-amber-200 shadow-xs flex justify-between items-center cursor-pointer hover:border-amber-400 transition">
+                <div>
+                    <p class="text-[11px] sm:text-xs font-semibold text-amber-600" id="statTitleWarning">내 마감 임박</p>
+                    <p class="text-xl sm:text-2xl font-bold text-amber-600 mt-0.5" id="statWarning">0</p>
+                </div>
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-sm sm:text-base"><i class="fa-solid fa-clock"></i></div>
+            </div>
+            <div id="cardExpired" onclick="setStatusFilter('EXPIRED')" class="bg-white p-3 sm:p-4 rounded-xl border border-red-200 shadow-xs flex justify-between items-center cursor-pointer hover:border-red-400 transition">
+                <div>
+                    <p class="text-[11px] sm:text-xs font-semibold text-red-600" id="statTitleExpired">내 기한 만료</p>
+                    <p class="text-xl sm:text-2xl font-bold text-red-600 mt-0.5" id="statExpired">0</p>
+                </div>
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center text-sm sm:text-base"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+        </div>
+
+        <!-- 관리자 시각화 차트 -->
+        <div id="adminChartSection" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs">
+            <div class="md:col-span-2 space-y-2">
+                <h4 class="text-xs font-bold text-slate-700 flex items-center"><i class="fa-solid fa-chart-column text-indigo-600 mr-1.5"></i>부서별 업무 완료 및 진행률</h4>
+                <div class="h-44 sm:h-48 relative"><canvas id="deptProgressChart"></canvas></div>
+            </div>
+            <div class="space-y-2">
+                <h4 class="text-xs font-bold text-slate-700 flex items-center"><i class="fa-solid fa-chart-pie text-indigo-600 mr-1.5"></i>전체 업무 상태 비율</h4>
+                <div class="h-44 sm:h-48 relative"><canvas id="statusPieChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Filter Alert Indicator -->
+        <div id="statusFilterBadge" class="hidden flex items-center justify-between bg-indigo-50 border border-indigo-200 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs text-indigo-900 font-medium">
+            <span class="truncate"><i class="fa-solid fa-filter text-indigo-600 mr-1"></i> 현재 <b id="statusFilterName" class="underline">진행 중 업무</b> 필터링 중입니다.</span>
+            <button onclick="setStatusFilter('ALL')" class="text-indigo-600 hover:text-indigo-800 font-bold bg-white px-2 py-0.5 rounded border border-indigo-200 shrink-0 ml-2">전체 보기</button>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                <select id="deptFilter" onchange="render()" class="w-full border border-slate-300 rounded-lg text-xs sm:text-sm px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <option value="">전체 부서 보기</option>
+                </select>
+
+                <div class="relative w-full">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="searchInput" oninput="render()" placeholder="업무명, 담당자 검색..." class="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+
+                <div class="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                    <select id="dateFilterType" onchange="handleDateFilterTypeChange()" class="border border-slate-300 rounded-md text-xs px-2 py-1.5 bg-white font-medium focus:outline-none">
+                        <option value="ALL">전체 기간</option>
+                        <option value="YEAR">년도별</option>
+                        <option value="MONTH">월별</option>
+                        <option value="DAY">일별</option>
+                        <option value="RANGE">기간별</option>
+                    </select>
+
+                    <input type="number" id="filterYear" placeholder="2026" value="2026" min="2020" max="2030" oninput="render()" class="hidden border border-slate-300 rounded-md text-xs px-1.5 py-1 w-16 bg-white">
+                    <input type="month" id="filterMonth" onchange="render()" class="hidden border border-slate-300 rounded-md text-xs px-1.5 py-1 bg-white">
+                    <input type="date" id="filterDay" onchange="render()" class="hidden border border-slate-300 rounded-md text-xs px-1 py-1 bg-white">
+
+                    <div id="filterRangeGroup" class="hidden flex items-center gap-0.5">
+                        <input type="date" id="filterRangeStart" onchange="render()" class="border border-slate-300 rounded text-[10px] p-1 bg-white w-24">
+                        <span class="text-[10px] text-slate-400">~</span>
+                        <input type="date" id="filterRangeEnd" onchange="render()" class="border border-slate-300 rounded text-[10px] p-1 bg-white w-24">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-1 bg-indigo-50/70 p-1 rounded-lg border border-indigo-100 text-xs">
+                    <span class="text-indigo-800 font-bold px-1 whitespace-nowrap"><i class="fa-solid fa-arrow-down-short-wide text-indigo-600 mr-0.5"></i>정렬:</span>
+                    <select id="sortBy" onchange="render()" class="border border-slate-300 rounded text-xs px-1.5 py-1 bg-white focus:outline-none flex-1">
+                        <option value="endDate">마감일순</option>
+                        <option value="startDate">시작일순</option>
+                        <option value="assignee">담당자순</option>
+                        <option value="dept">부서별</option>
+                        <option value="name">업무명순</option>
+                        <option value="files">파일수순</option>
+                        <option value="progress">진행률순</option>
+                    </select>
+                    <button onclick="toggleSortOrder()" id="sortOrderBtn" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-2 py-1 rounded text-xs font-bold transition flex items-center gap-0.5 shrink-0">
+                        <i id="sortOrderIcon" class="fa-solid fa-arrow-down-a-z text-indigo-600"></i>
+                        <span id="sortOrderText" class="hidden sm:inline">오름차순</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 업무 선택/전체 삭제 툴바 기능 -->
+            <div class="flex items-center justify-between gap-2 border-t pt-2.5">
+                <div class="flex items-center gap-2">
+                    <div class="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-semibold">
+                        <button id="btnViewTable" onclick="switchView('table')" class="px-2.5 py-1.5 rounded-md bg-white text-indigo-900 shadow-xs transition">
+                            <i class="fa-solid fa-list"></i> <span class="hidden sm:inline">목록</span>
+                        </button>
+                        <button id="btnViewGantt" onclick="switchView('gantt')" class="hidden px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition">
+                            <i class="fa-solid fa-chart-gantt"></i> <span class="hidden sm:inline">간트차트</span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                        <button onclick="deleteSelectedTasks()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2.5 py-1.5 rounded-lg font-bold text-xs transition flex items-center gap-1">
+                            <i class="fa-solid fa-trash"></i> <span class="hidden sm:inline">선택 삭제</span>
+                        </button>
+                        <button onclick="deleteAllTasks()" class="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1.5 rounded-lg font-bold text-xs shadow-xs transition flex items-center gap-1">
+                            <span class="hidden sm:inline">전체 삭제</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1.5">
+                    <button onclick="exportFilteredExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg font-medium shadow-xs text-xs whitespace-nowrap transition flex items-center gap-1">
+                        <i class="fa-solid fa-file-excel"></i> <span class="hidden sm:inline">엑셀 추출</span>
+                    </button>
+                    <button onclick="openTaskModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-medium shadow-xs text-xs sm:text-sm whitespace-nowrap transition">
+                        <i class="fa-solid fa-plus mr-0.5"></i> 업무 추가
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task List View -->
+        <div id="tableViewSection" class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left text-xs min-w-[680px]">
+                <thead class="bg-slate-50 text-slate-600 border-b border-slate-200 font-bold select-none">
+                    <tr>
+                        <th class="p-3 w-8 text-center">
+                            <input type="checkbox" id="selectAllTasksCb" onchange="toggleSelectAllTasks(this)" class="accent-indigo-600 rounded cursor-pointer">
+                        </th>
+                        <th class="p-3 w-20 min-w-[70px] whitespace-nowrap">상태</th>
+                        <th class="p-3 cursor-pointer hover:bg-slate-100" onclick="handleHeaderSort('dept')">부서 <i class="fa-solid fa-sort text-slate-400 ml-0.5"></i></th>
+                        <th class="p-3 cursor-pointer hover:bg-slate-100" onclick="handleHeaderSort('name')">업무명 (상세보기) <i class="fa-solid fa-sort text-slate-400 ml-0.5"></i></th>
+                        <th class="p-3 cursor-pointer hover:bg-slate-100" onclick="handleHeaderSort('assignee')">담당자 <i class="fa-solid fa-sort text-slate-400 ml-0.5"></i></th>
+                        <th class="p-3 cursor-pointer hover:bg-slate-100" onclick="handleHeaderSort('endDate')">기간/진행률 <i class="fa-solid fa-sort text-slate-400 ml-0.5"></i></th>
+                        <th class="p-3 cursor-pointer hover:bg-slate-100" onclick="handleHeaderSort('files')">첨부파일 <i class="fa-solid fa-sort text-slate-400 ml-0.5"></i></th>
+                        <th class="p-3 w-16">댓글</th>
+                        <th class="p-3 text-right w-24">작업</th>
+                    </tr>
+                </thead>
+                <tbody id="taskList" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+
+        <!-- Task Gantt View -->
+        <div id="ganttViewSection" class="hidden bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden p-3 sm:p-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-2 border-b pb-3">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-layer-group text-indigo-600 mr-1.5"></i> 부서별 타임라인 (간트차트)
+                    </h3>
+                    <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-medium">상하좌우 스크롤 지원</span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2 text-[10px] sm:text-xs">
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> 진행중</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 임박</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> 만료</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> 완료</span>
+                    </div>
+
+                    <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
+                        <span class="text-[10px] font-bold text-slate-600 px-1"><i class="fa-solid fa-magnifying-glass"></i> 축척:</span>
+                        <button onclick="zoomGantt(-5)" class="bg-white hover:bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded border border-slate-300 text-xs" title="축소">
+                            <i class="fa-solid fa-minus"></i>
+                        </button>
+                        <span id="ganttZoomVal" class="text-[11px] font-bold text-indigo-600 min-w-[36px] text-center">100%</span>
+                        <button onclick="zoomGantt(5)" class="bg-white hover:bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded border border-slate-300 text-xs" title="확대">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                        <button onclick="fitGanttToOnePage()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2 py-0.5 rounded text-[11px] shadow-xs transition ml-1 flex items-center gap-1">
+                            <i class="fa-solid fa-expand"></i> <span>한눈에 보기</span>
+                        </button>
+                        <button onclick="resetGanttZoom()" class="bg-white hover:bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded text-[10px] border border-slate-300 ml-0.5">
+                            기본
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ganttViewport" class="border-2 border-indigo-200 rounded-xl overflow-auto max-h-[580px] min-h-[380px] bg-slate-50 relative custom-scrollbar shadow-inner">
+                <div id="ganttContainer" class="bg-white min-w-full"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 관리자 모달 백업/복원 -->
+    <div id="backupModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col">
+            <div class="bg-purple-900 text-white px-4 py-3 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-xs sm:text-sm"><i class="fa-solid fa-file-excel mr-1.5"></i>엑셀 파일 백업 및 복원</h3>
+                <button onclick="closeBackupModal()"><i class="fa-solid fa-xmark hover:text-purple-200 p-1"></i></button>
+            </div>
+            
+            <div class="p-4 sm:p-6 space-y-4">
+                <div class="bg-purple-50 border border-purple-100 p-3.5 rounded-xl flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-xs text-purple-900 mb-0.5"><i class="fa-solid fa-download mr-1"></i> 엑셀 백업 다운로드</h4>
+                        <p class="text-[10px] sm:text-[11px] text-purple-700">모든 업무 및 회원 데이터 백업</p>
+                    </div>
+                    <button onclick="exportBackupExcel()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-xs whitespace-nowrap ml-2">
+                        백업 실행
+                    </button>
+                </div>
+
+                <div class="space-y-2 border-t border-slate-200 pt-3">
+                    <h4 class="font-bold text-xs text-slate-800"><i class="fa-solid fa-upload text-indigo-600 mr-1"></i> 엑셀 데이터 복원</h4>
+                    <input type="file" id="backupFileInput" accept=".xlsx, .xls" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-purple-100 file:text-purple-800 font-bold border border-slate-200 p-1.5 rounded-xl">
+                </div>
+
+                <div class="pt-2 border-t flex justify-end gap-2">
+                    <button onclick="closeBackupModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold transition">닫기</button>
+                    <button onclick="importBackupExcel()" class="bg-purple-700 hover:bg-purple-800 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-xs transition">복원 실행</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 통합 회원/로그/알림/수신함 관리 모달 -->
+    <div id="userModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-3 sm:p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full flex flex-col max-h-[85vh] sm:max-h-[90vh] my-auto">
+            <div class="bg-indigo-900 text-white px-4 py-3 flex justify-between items-center shrink-0 rounded-t-xl">
+                <h3 class="font-bold text-xs sm:text-sm"><i class="fa-solid fa-users-gear mr-1.5"></i>통합 회원, 알림, 수신함 및 시스템 로그</h3>
+                <button onclick="closeUserModal()"><i class="fa-solid fa-xmark hover:text-indigo-200 p-1"></i></button>
+            </div>
+
+            <div class="flex border-b border-slate-200 bg-slate-50 px-3 sm:px-5 pt-2 text-xs font-bold overflow-x-auto custom-scrollbar shrink-0">
+                <button id="tabUserListBtn" onclick="switchAdminSubTab('users')" class="py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap">회원 목록 관리</button>
+                <button id="tabBroadcastBtn" onclick="switchAdminSubTab('broadcast')" class="py-2 px-3 text-slate-500 whitespace-nowrap"><i class="fa-solid fa-paper-plane text-amber-500 mr-1"></i>전체 회원 알림 발송</button>
+                <button id="tabAdminInboxBtn" onclick="switchAdminSubTab('inbox')" class="py-2 px-3 text-slate-500 whitespace-nowrap"><i class="fa-solid fa-inbox text-indigo-600 mr-1"></i>수신된 관리자 문의 <span id="adminInboxBadge" class="bg-red-500 text-white text-[9px] px-1.5 py-0.2 rounded-full hidden">0</span></button>
+                <button id="tabAuditLogBtn" onclick="switchAdminSubTab('logs')" class="py-2 px-3 text-slate-500 whitespace-nowrap">활동 로그 (Audit Trail)</button>
+            </div>
+            
+            <div class="p-4 sm:p-5 overflow-y-auto flex-1 min-h-0 space-y-4 custom-scrollbar">
+                
+                <!-- 회원 관리 탭 -->
+                <div id="adminUserTabSection" class="space-y-4">
+                    <div class="bg-amber-50 border border-amber-200 p-3.5 rounded-xl space-y-2">
+                        <div class="flex justify-between items-center flex-wrap gap-2">
+                            <h4 class="font-bold text-amber-900 text-xs"><i class="fa-solid fa-file-excel text-emerald-600 mr-1"></i> 엑셀 회원 일괄 등록</h4>
+                            <button onclick="downloadTemplate()" class="text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg transition shadow-xs">
+                                <i class="fa-solid fa-download"></i> 양식 받기
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap pt-1">
+                            <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-amber-200 file:text-amber-900 font-bold border border-amber-200 bg-white rounded-lg p-0.5">
+                            <button onclick="uploadExcelUsers()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1 rounded-lg text-xs shadow-xs transition">업로드</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <h4 class="font-bold text-xs text-slate-700 mb-2"><i class="fa-solid fa-user-plus text-indigo-600 mr-1"></i> 개별 회원 신규 추가</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                            <input type="text" id="addUserName" placeholder="이름 (예: 이교사)" class="border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none">
+                            <input type="text" id="addUserYear" value="2026" placeholder="학년도" class="border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none">
+                            <input type="text" id="addUserDept" placeholder="소속 부서" class="border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none">
+                            <button onclick="addSingleUser()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition">추가</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold text-xs text-slate-700 mb-1.5"><i class="fa-solid fa-list text-indigo-600 mr-1"></i> 등록된 전체 회원 (<span id="userCount">0</span>명)</h4>
+                        <div class="border border-slate-200 rounded-lg overflow-x-auto max-h-60 custom-scrollbar">
+                            <table class="w-full text-left text-xs min-w-[400px]">
+                                <thead class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
+                                    <tr>
+                                        <th class="p-2">이름</th>
+                                        <th class="p-2">학년도</th>
+                                        <th class="p-2">소속 부서</th>
+                                        <th class="p-2">비밀번호</th>
+                                        <th class="p-2 text-right">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userListUI" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 전체 회원 알림 발송 탭 -->
+                <div id="adminBroadcastTabSection" class="hidden space-y-4">
+                    <div class="bg-amber-50/70 border border-amber-200 p-4 rounded-xl space-y-3">
+                        <h4 class="font-bold text-xs text-amber-900 flex items-center"><i class="fa-solid fa-bullhorn text-amber-600 text-sm mr-1.5"></i> 전체 회원 🔔 알림 일괄 발송</h4>
+                        <p class="text-[11px] text-amber-800">관리자가 발송한 알림은 선택한 카테고리 태그와 함께 모든 회원의 우측 상단 종 모양(🔔) 알림에 전달됩니다.</p>
+                        
+                        <div class="space-y-2 pt-1">
+                            <div>
+                                <label class="block text-[11px] font-bold text-amber-900 mb-1">알림 카테고리 및 상태 선택</label>
+                                <select id="broadcastCategory" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white font-bold text-slate-700">
+                                    <option value="NOTICE">🔔 일반 전체 공지</option>
+                                    <option value="WARNING">⚠️ [임박] 마감일 임박 업무 안내</option>
+                                    <option value="URGENT">🚨 [독촉] 미완료 및 지연 업무 작성 독촉</option>
+                                </select>
+                            </div>
+                            <input type="text" id="broadcastTitle" placeholder="알림 제목 (예: 2학기 중간고사 출제 마감 안내)" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                            <textarea id="broadcastBody" rows="3" placeholder="회원들에게 알릴 공지 메시지 내용을 적어주세요..." class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white custom-scrollbar"></textarea>
+                        </div>
+                        <div class="text-right">
+                            <button onclick="sendBroadcastNotification()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-4 py-2 rounded-lg text-xs shadow-xs transition flex items-center gap-1 ml-auto">
+                                <i class="fa-solid fa-paper-plane"></i> <span>전체 회원에게 알림 발송</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 수신된 관리자 문의함 탭 -->
+                <div id="adminInboxTabSection" class="hidden space-y-3">
+                    <h4 class="font-bold text-xs text-slate-700 flex items-center justify-between">
+                        <span><i class="fa-solid fa-inbox text-indigo-600 mr-1"></i> 교직원이 남긴 메시지 및 문의 내역</span>
+                        <button onclick="clearAdminInbox()" class="text-[10px] text-red-600 hover:underline">수신함 비우기</button>
+                    </h4>
+                    <div id="adminInboxList" class="space-y-2 text-xs"></div>
+                </div>
+
+                <!-- 감사 로그 탭 -->
+                <div id="adminAuditLogTabSection" class="hidden space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-bold text-xs text-slate-700"><i class="fa-solid fa-clock-rotate-left text-indigo-600 mr-1"></i> 최근 변경 및 작업 이력 로그</h4>
+                        <button onclick="clearAuditLogs()" class="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded">로그 초기화</button>
+                    </div>
+                    <div class="border border-slate-200 rounded-lg overflow-hidden bg-slate-900 text-slate-200 p-3 font-mono text-[11px] h-72 overflow-y-auto custom-scrollbar space-y-1.5" id="auditLogContainer">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Detail & Edit Modal -->
+    <div id="taskModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-3 sm:p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full flex flex-col max-h-[92vh]">
+            <div class="bg-indigo-900 text-white px-4 py-3 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-xs sm:text-sm" id="modalTitle">업무 등록/상세</h3>
+                <button onclick="closeTaskModal()"><i class="fa-solid fa-xmark hover:text-indigo-200 p-1"></i></button>
+            </div>
+            
+            <div class="p-4 sm:p-5 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                
+                <div id="batchTaskUploadSection" class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl space-y-2">
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <h4 class="font-bold text-emerald-900 text-xs"><i class="fa-solid fa-file-excel text-emerald-600 mr-1"></i> 엑셀 업무 일괄 등록</h4>
+                        <button type="button" onclick="downloadTaskTemplate()" class="text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded-lg transition shadow-xs">
+                            <i class="fa-solid fa-download"></i> 양식 받기
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap pt-1">
+                        <input type="file" id="taskExcelFileInput" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-emerald-200 file:text-emerald-900 font-bold border border-emerald-200 bg-white rounded-lg p-0.5">
+                        <button type="button" onclick="uploadExcelTasks()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded-lg text-xs shadow-xs transition">일괄 적용</button>
+                    </div>
+                </div>
+
+                <form id="taskForm" onsubmit="saveTask(event)" class="space-y-3.5 border-b pb-4">
+                    <input type="hidden" id="taskId">
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">업무명</label>
+                        <input type="text" id="taskName" required class="w-full border rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">업무 상세 설명 (Description)</label>
+                        <textarea id="taskDesc" rows="3" placeholder="업무 구체 내용, 참고사항 등을 기재하세요..." class="w-full border rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none custom-scrollbar"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">부서</label>
+                            <select id="taskDept" required class="w-full border rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">담당자</label>
+                            <select id="taskAssignee" required class="w-full border rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">시작일</label>
+                            <input type="date" id="taskStartDate" required class="w-full border rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">마감일</label>
+                            <input type="date" id="taskEndDate" required class="w-full border rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-slate-700">진행률</label>
+                            <span class="text-xs text-indigo-600 font-bold" id="progressVal">0%</span>
+                        </div>
+                        <input type="range" id="taskProgress" min="0" max="100" value="0" oninput="document.getElementById('progressVal').innerText=this.value+'%'" class="w-full accent-indigo-600">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">다중 파일 첨부 (드래그 & 드롭 지원)</label>
+                        <div id="dropZone" class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl p-3 sm:p-4 text-center cursor-pointer hover:border-indigo-400 transition" onclick="document.getElementById('taskFiles').click()">
+                            <i class="fa-solid fa-cloud-arrow-up text-xl sm:text-2xl text-indigo-500 mb-1"></i>
+                            <p class="text-xs font-bold text-slate-700">여기에 파일을 끌어다 놓거나 클릭하세요</p>
+                            <input type="file" id="taskFiles" multiple class="hidden" onchange="handleFileSelect(this.files)">
+                        </div>
+                        <div id="fileListUI" class="mt-2 space-y-1 text-xs flex flex-wrap gap-1"></div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-2">
+                        <button type="button" id="btnDeleteTask" onclick="deleteCurrentTask()" class="hidden bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                            <i class="fa-solid fa-trash"></i> 삭제
+                        </button>
+                        <div class="ml-auto">
+                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs sm:text-sm font-bold shadow-xs transition">저장하기</button>
+                        </div>
+                    </div>
+                </form>
+
+                <div id="commentSection" class="hidden border-t pt-3">
+                    <div class="flex justify-between items-center mb-2.5">
+                        <h4 class="font-bold text-xs sm:text-sm text-slate-800"><i class="fa-regular fa-comments text-amber-500 mr-1"></i> 업무 진행 코멘트 대화방</h4>
+                        <button type="button" onclick="openChatWindow(currentOpenTaskId)" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-2.5 py-1.5 rounded-lg text-xs transition shadow-xs flex items-center gap-1">
+                            <i class="fa-solid fa-comment"></i> <span>대화방 열기</span>
+                        </button>
+                    </div>
+                    <div id="commentList" class="space-y-2 mb-2 bg-slate-100 p-2.5 rounded-lg max-h-40 overflow-y-auto custom-scrollbar cursor-pointer border border-slate-200 hover:border-amber-400 transition" onclick="openChatWindow(currentOpenTaskId)" title="클릭 시 채팅창이 연동됩니다.">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 로직 스크립트 -->
+    <script>
+        Chart.register(ChartDataLabels);
+
+        // ★★★ [중요] 여기에 생성하신 Google Apps Script 배포 URL 주소를 붙여넣어 주세요! ★★★
+        const GAS_WEBAPP_URL = "여기에_발행된_웹앱_URL을_붙여넣으세요";
+
+        let registeredUsers = [];
+        let adminAccount = { id: 'admin', pw: '1234' };
+        let currentUser = JSON.parse(sessionStorage.getItem('currentUser')) || null;
+        let noticeTextData = '';
+        let auditLogs = [];
+        let broadcastNotifs = [];
+        let readNotifIds = JSON.parse(localStorage.getItem('readNotifIds')) || [];
+        let deletedNotifIds = JSON.parse(localStorage.getItem('deletedNotifIds')) || [];
+        let adminInbox = [];
+        let tasks = [];
+        let fileObjects = {};
+
+        let pendingUserIndex = null;
+        let currentOpenTaskId = null;
+        let currentView = 'table';
+        let selectedStatusFilter = 'ALL';
+        let currentSortAsc = true; 
+        let tempFiles = [];
+
+        let deptChartInstance = null;
+        let statusChartInstance = null;
+        let ganttCellWidth = 32;
+
+        window.onload = async () => {
+            setupDragAndDrop();
+            await loadCloudData();
+
+            if (!currentUser) {
+                document.getElementById('loginOverlay').classList.remove('hidden');
+            } else {
+                document.getElementById('loginOverlay').classList.add('hidden');
+                initApp();
             }
-          }
-        });
-      } else if (tabType === 'mock') {
-        graphTitle.innerText = "🎯 모의고사 회차별 성적 추이 (표준점수 & 등급)";
-        const mocks = excelData["04_모의고사성적"].rows.filter(r => r.학번 === stId);
 
-        chartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: mocks.map(m => `${m.시행년월} [${m.영역}]`),
-            datasets: [
-              {
-                label: '표준점수',
-                data: mocks.map(m => parseFloat(m.표준점수)),
-                backgroundColor: 'rgba(40, 167, 69, 0.75)',
-                yAxisID: 'y'
-              },
-              {
-                label: '등급',
-                data: mocks.map(m => parseFloat(m.등급)),
-                type: 'line',
-                borderColor: '#ffc107',
-                backgroundColor: '#ffc107',
-                borderWidth: 2,
-                yAxisID: 'y1'
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              y: { beginAtZero: false, min: 50, max: 150, title: { display: true, text: '표준점수' } },
-              y1: { reverse: true, min: 1, max: 9, position: 'right', title: { display: true, text: '등급' }, grid: { drawOnChartArea: false } }
+            // 30초마다 구글 시트 데이터 자동 새로고침 (다른 PC 변동사항 반영)
+            setInterval(async () => {
+                if (currentUser) {
+                    await loadCloudData(true);
+                }
+            }, 30000);
+        };
+
+        // 클라우드 통합 로드 함수
+        async function loadCloudData(isBackground = false) {
+            if (!GAS_WEBAPP_URL || GAS_WEBAPP_URL.includes("여기에")) return;
+            if (!isBackground) document.getElementById('syncLoading').classList.remove('hidden');
+            try {
+                const res = await fetch(GAS_WEBAPP_URL);
+                const data = await res.json();
+                
+                tasks = data.tasks || [];
+                registeredUsers = data.users || [
+                    { name: '홍길동', year: '2026', dept: '교무기획부', password: null, hasPw: false },
+                    { name: '김철수', year: '2026', dept: '학생생활부', password: null, hasPw: false },
+                    { name: '이교사', year: '2026', dept: '행정실', password: null, hasPw: false }
+                ];
+                noticeTextData = data.notice;
+                auditLogs = data.logs || [];
+                broadcastNotifs = data.notifs || [];
+                adminInbox = data.inbox || [];
+
+                document.getElementById('noticeText').innerText = noticeTextData;
+                if (currentUser) {
+                    updateNotifications();
+                    render();
+                }
+            } catch (err) {
+                console.error("클라우드 데이터를 로드하지 못했습니다:", err);
+            } finally {
+                if (!isBackground) document.getElementById('syncLoading').classList.add('hidden');
             }
-          }
-        });
-      }
-    }
-  </script>
+        }
+
+        // 클라우드 통합 저장 함수
+        async function saveCloudData() {
+            if (!GAS_WEBAPP_URL || GAS_WEBAPP_URL.includes("여기에")) return;
+            document.getElementById('syncLoading').classList.remove('hidden');
+            try {
+                const payload = {
+                    schoolTasksV2: tasks,
+                    registeredUsers: registeredUsers,
+                    schoolNoticeBanner: noticeTextData,
+                    auditLogs: auditLogs,
+                    broadcastNotifs: broadcastNotifs,
+                    adminInbox: adminInbox
+                };
+                await fetch(GAS_WEBAPP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // 크로스 오리진 제한 방지
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                // 임시 대기시간 부여 후 새로고침 유도
+                setTimeout(async () => {
+                    await loadCloudData(true);
+                }, 800);
+            } catch (err) {
+                console.error("클라우드 저장소 동기화 중 오류 발생:", err);
+            } finally {
+                document.getElementById('syncLoading').classList.add('hidden');
+            }
+        }
+
+        function addLog(actionText) {
+            const time = new Date().toLocaleString();
+            const logItem = { time, text: `[${currentUser ? currentUser.name : '시스템'}] ${actionText}` };
+            auditLogs.unshift(logItem);
+            if(auditLogs.length > 100) auditLogs.pop();
+            renderAuditLogs();
+        }
+
+        function renderAuditLogs() {
+            const container = document.getElementById('auditLogContainer');
+            if(!container) return;
+            container.innerHTML = auditLogs.map(l => `<div><span class="text-emerald-400">[${l.time}]</span> ${l.text}</div>`).join('');
+        }
+
+        async function clearAuditLogs() {
+            if(confirm('모든 로그를 삭제하시겠습니까?')) {
+                auditLogs = [];
+                renderAuditLogs();
+                await saveCloudData();
+            }
+        }
+
+        async function editNotice() {
+            const input = prompt('변경할 전역 공지사항 문구를 입력하세요:', noticeTextData);
+            if(input !== null && input.trim() !== '') {
+                noticeTextData = input.trim();
+                document.getElementById('noticeText').innerText = noticeTextData;
+                addLog(`전역 공지사항 수정: "${noticeTextData}"`);
+                await saveCloudData();
+            }
+        }
+
+        function switchLoginTab(type) {
+            document.getElementById('tabUserBtn').className = type === 'user' ? "flex-1 py-2 font-bold text-xs sm:text-sm text-indigo-600 border-b-2 border-indigo-600" : "flex-1 py-2 font-bold text-xs sm:text-sm text-slate-400";
+            document.getElementById('tabAdminBtn').className = type === 'admin' ? "flex-1 py-2 font-bold text-xs sm:text-sm text-indigo-600 border-b-2 border-indigo-600" : "flex-1 py-2 font-bold text-xs sm:text-sm text-slate-400";
+            
+            if (type === 'user') {
+                document.getElementById('userLoginForm').classList.remove('hidden');
+                document.getElementById('adminLoginForm').classList.add('hidden');
+            } else {
+                document.getElementById('userLoginForm').classList.add('hidden');
+                document.getElementById('adminLoginForm').classList.remove('hidden');
+            }
+        }
+
+        function handleUserLogin() {
+            const name = document.getElementById('loginName').value.trim();
+            const pwInput = document.getElementById('loginUserPw').value;
+
+            const idx = registeredUsers.findIndex(u => u.name === name);
+            if (idx === -1) return alert('등록되지 않은 회원명입니다.');
+
+            const user = registeredUsers[idx];
+
+            if (!user.hasPw) {
+                if (pwInput !== '1234') {
+                    return alert('최초 로그인 시 임시 비밀번호 [1234]를 입력해 주세요.');
+                }
+                pendingUserIndex = idx;
+                document.getElementById('pwSetupModal').classList.remove('hidden');
+                document.getElementById('pwSetupModal').classList.add('flex');
+            } else {
+                if (!pwInput) {
+                    return alert('비밀번호를 입력해 주세요.');
+                }
+                if (user.password === pwInput) {
+                    currentUser = { name: user.name, dept: user.dept, role: 'USER' };
+                    sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    document.getElementById('loginOverlay').classList.add('hidden');
+                    addLog(`사용자 로그인 성공`);
+                    initApp();
+                } else {
+                    alert('비밀번호가 올바르지 않습니다.');
+                }
+            }
+        }
+
+        async function saveNewPassword() {
+            const p1 = document.getElementById('newPw').value;
+            const p2 = document.getElementById('confirmPw').value;
+            if (!p1 || p1 !== p2) return alert('비밀번호가 일치하지 않습니다.');
+
+            registeredUsers[pendingUserIndex].password = p1;
+            registeredUsers[pendingUserIndex].hasPw = true;
+
+            currentUser = { name: registeredUsers[pendingUserIndex].name, dept: registeredUsers[pendingUserIndex].dept, role: 'USER' };
+            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+            document.getElementById('pwSetupModal').classList.add('hidden');
+            document.getElementById('loginOverlay').classList.add('hidden');
+            addLog(`최초 비밀번호 설정 완료`);
+            initApp();
+            await saveCloudData();
+        }
+
+        function openChangePwModal() {
+            document.getElementById('changePwModal').classList.remove('hidden');
+            document.getElementById('changePwModal').classList.add('flex');
+        }
+
+        function closeChangePwModal() {
+            document.getElementById('changePwModal').classList.add('hidden');
+            document.getElementById('changePwModal').classList.remove('flex');
+            document.getElementById('changeOldPw').value = '';
+            document.getElementById('changeNewPw').value = '';
+            document.getElementById('changeConfirmPw').value = '';
+        }
+
+        async function execChangePassword() {
+            const oldP = document.getElementById('changeOldPw').value;
+            const newP = document.getElementById('changeNewPw').value;
+            const confirmP = document.getElementById('changeConfirmPw').value;
+
+            if (currentUser.role === 'ADMIN') {
+                if (adminAccount.pw !== oldP) return alert('현재 관리자 비밀번호가 일치하지 않습니다.');
+                if (!newP || newP !== confirmP) return alert('새 비밀번호 확인이 일치하지 않습니다.');
+
+                adminAccount.pw = newP;
+                alert('관리자 비밀번호가 변경되었습니다!');
+                addLog(`관리자 비밀번호 변경 완료`);
+                closeChangePwModal();
+            } else {
+                const userObj = registeredUsers.find(u => u.name === currentUser.name);
+                if (!userObj) return;
+
+                if (userObj.password !== oldP) return alert('현재 비밀번호가 불일치합니다.');
+                if (!newP || newP !== confirmP) return alert('새 비밀번호 확인이 일치하지 않습니다.');
+
+                userObj.password = newP;
+                alert('비밀번호가 변경되었습니다!');
+                addLog(`비밀번호 직접 변경 완료`);
+                closeChangePwModal();
+                await saveCloudData();
+            }
+        }
+
+        function handleAdminLogin() {
+            const id = document.getElementById('adminId').value;
+            const pw = document.getElementById('adminPw').value;
+
+            if (id === adminAccount.id && pw === adminAccount.pw) {
+                currentUser = { name: '최고 관리자', role: 'ADMIN' };
+                sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                document.getElementById('loginOverlay').classList.add('hidden');
+                addLog(`관리자 로그인 성공`);
+                initApp();
+            } else {
+                alert('관리자 정보가 일치하지 않습니다.');
+            }
+        }
+
+        function logout() {
+            if(currentUser) addLog(`로그아웃`);
+            sessionStorage.removeItem('currentUser');
+            location.reload();
+        }
+
+        function initApp() {
+            document.getElementById('currentUserDisplay').innerText = currentUser.name + (currentUser.role === 'ADMIN' ? ' [관리자]' : ' 선생님');
+            
+            if (currentUser.role === 'ADMIN') {
+                document.getElementById('statTitleTotal').innerText = '전체 등록 업무';
+                document.getElementById('statTitleOngoing').innerText = '전체 진행 중 업무';
+                document.getElementById('statTitleWarning').innerText = '전체 마감 임박';
+                document.getElementById('statTitleExpired').innerText = '전체 기한 만료';
+                
+                document.getElementById('btnBackupManagement').classList.remove('hidden');
+                document.getElementById('btnUserManagement').classList.remove('hidden');
+                document.getElementById('btnViewGantt').classList.remove('hidden');
+                document.getElementById('btnEditNotice').classList.remove('hidden');
+                document.getElementById('adminChartSection').classList.remove('hidden');
+                document.getElementById('btnContactAdmin').classList.add('hidden');
+            } else {
+                document.getElementById('statTitleTotal').innerText = '내 등록 업무';
+                document.getElementById('statTitleOngoing').innerText = '내 진행 중 업무';
+                document.getElementById('statTitleWarning').innerText = '내 마감 임박';
+                document.getElementById('statTitleExpired').innerText = '내 기한 만료';
+
+                document.getElementById('btnBackupManagement').classList.add('hidden');
+                document.getElementById('btnUserManagement').classList.add('hidden');
+                document.getElementById('btnViewGantt').classList.add('hidden');
+                document.getElementById('btnEditNotice').classList.add('hidden');
+                document.getElementById('adminChartSection').classList.add('hidden');
+                document.getElementById('btnContactAdmin').classList.remove('hidden');
+            }
+
+            updateDeptSelects();
+            updateNotifications();
+            render();
+        }
+
+        function getNotifList() {
+            if(!currentUser) return [];
+            const today = new Date().toISOString().split('T')[0];
+            const myTasks = (currentUser.role === 'ADMIN') ? tasks : tasks.filter(t => t.assignee === currentUser.name);
+
+            let rawList = [];
+
+            broadcastNotifs.forEach(b => {
+                let catBadge = '<span class="bg-purple-600 text-white text-[9px] px-1.5 py-0.2 rounded font-bold mr-1">일반공지</span>';
+                if(b.category === 'WARNING') catBadge = '<span class="bg-amber-600 text-white text-[9px] px-1.5 py-0.2 rounded font-bold mr-1">마감임박</span>';
+                else if(b.category === 'URGENT') catBadge = '<span class="bg-red-600 text-white text-[9px] px-1.5 py-0.2 rounded font-bold mr-1">작성독촉</span>';
+
+                rawList.push({
+                    id: 'BC_' + b.id,
+                    type: 'broadcast',
+                    title: `${catBadge} ${b.title}`,
+                    body: b.body,
+                    date: b.date,
+                    targetTaskId: null
+                });
+            });
+
+            myTasks.forEach(t => {
+                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                if(t.progress < 100) {
+                    if(diffDays >= 0 && diffDays <= 3) {
+                        rawList.push({
+                            id: 'TASK_WARN_' + t.id,
+                            type: 'task_warn',
+                            title: `<span class="font-bold text-amber-600">[마감임박 D-${diffDays}]</span> ${t.name}`,
+                            body: `마감일: ~${t.endDate} (현재 진행률: ${t.progress}%)`,
+                            date: today,
+                            targetTaskId: t.id
+                        });
+                    } else if(diffDays < 0) {
+                        rawList.push({
+                            id: 'TASK_EXP_' + t.id,
+                            type: 'task_exp',
+                            title: `<span class="font-bold text-red-600">[마감지연]</span> ${t.name}`,
+                            body: `마감일(${t.endDate})이 경과했습니다. 즉시 제출바랍니다.`,
+                            date: today,
+                            targetTaskId: t.id
+                        });
+                    }
+                }
+
+                if(currentUser.role !== 'ADMIN' && (t.comments || []).length > 0) {
+                    const lastComment = t.comments[t.comments.length - 1];
+                    if(lastComment.user !== currentUser.name) {
+                        rawList.push({
+                            id: 'TASK_CMT_' + t.id + '_' + t.comments.length,
+                            type: 'task_comment',
+                            title: `<span class="font-bold text-indigo-600">[새 메시지 - ${lastComment.user}]</span> ${t.name}`,
+                            body: `"${lastComment.text}"`,
+                            date: lastComment.date,
+                            targetTaskId: t.id,
+                            isChat: true
+                        });
+                    }
+                }
+            });
+
+            return rawList.filter(item => !deletedNotifIds.includes(item.id));
+        }
+
+        function updateNotifications() {
+            if(!currentUser) return;
+
+            const allNotifs = getNotifList();
+            const unreadNotifs = allNotifs.filter(n => !readNotifIds.includes(n.id));
+
+            const badge = document.getElementById('notifBadge');
+            if(unreadNotifs.length > 0) {
+                badge.innerText = unreadNotifs.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            renderNotifModalList(allNotifs);
+
+            if (currentUser.role === 'ADMIN') {
+                const inboxBadge = document.getElementById('adminInboxBadge');
+                if (adminInbox.length > 0) {
+                    inboxBadge.innerText = adminInbox.length;
+                    inboxBadge.classList.remove('hidden');
+                } else {
+                    inboxBadge.classList.add('hidden');
+                }
+            }
+        }
+
+        function renderNotifModalList(allNotifs) {
+            const listContainer = document.getElementById('notifListContainer');
+            if(!listContainer) return;
+
+            if (allNotifs.length === 0) {
+                listContainer.innerHTML = '<p class="text-slate-400 text-center py-8 text-xs"><i class="fa-solid fa-bell-slash text-xl block mb-1"></i>표시할 알림이 없습니다.</p>';
+                return;
+            }
+
+            let html = '';
+            allNotifs.forEach(n => {
+                const isRead = readNotifIds.includes(n.id);
+
+                html += `
+                <div class="p-2.5 rounded-lg border text-xs flex items-start gap-2.5 transition ${isRead ? 'bg-slate-50 border-slate-200 opacity-60' : 'bg-white border-indigo-200 shadow-2xs'}">
+                    <input type="checkbox" class="notif-item-checkbox accent-indigo-600 rounded mt-1 shrink-0" value="${n.id}">
+                    <div class="flex-1 cursor-pointer min-w-0" onclick="handleClickNotif('${n.id}', '${n.targetTaskId || ''}', ${n.isChat || false})">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-xs truncate mr-2">${n.title} ${isRead ? '<span class="text-[9px] text-slate-400 font-normal">[읽음]</span>' : ''}</span>
+                            <span class="text-[9px] text-slate-400 shrink-0">${n.date}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 truncate">${n.body}</p>
+                    </div>
+                    <button onclick="deleteSingleNotif('${n.id}')" class="text-slate-300 hover:text-red-500 text-xs p-1 shrink-0" title="알림 삭제">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>`;
+            });
+
+            listContainer.innerHTML = html;
+            
+            const selectAllCb = document.getElementById('selectAllNotifs');
+            if (selectAllCb) selectAllCb.checked = false;
+        }
+
+        function handleClickNotif(notifId, targetTaskId, isChat) {
+            markNotifAsRead([notifId]);
+            closeNotifModal();
+            if (isChat && targetTaskId) {
+                openChatWindow(targetTaskId);
+            } else if (targetTaskId) {
+                openTaskModal(targetTaskId);
+            }
+        }
+
+        function toggleSelectAllNotifs(mainCb) {
+            const checkboxes = document.querySelectorAll('.notif-item-checkbox');
+            checkboxes.forEach(cb => cb.checked = mainCb.checked);
+        }
+
+        function getSelectedNotifIds() {
+            const checkboxes = document.querySelectorAll('.notif-item-checkbox:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        function markNotifAsRead(ids) {
+            let updated = false;
+            ids.forEach(id => {
+                if(!readNotifIds.includes(id)) {
+                    readNotifIds.push(id);
+                    updated = true;
+                }
+            });
+            if (updated) {
+                localStorage.setItem('readNotifIds', JSON.stringify(readNotifIds));
+                updateNotifications();
+            }
+        }
+
+        function markSelectedNotifsAsRead() {
+            const selectedIds = getSelectedNotifIds();
+            if (selectedIds.length === 0) return alert('선택된 알림이 없습니다.');
+            markNotifAsRead(selectedIds);
+        }
+
+        function markAllNotifsAsRead() {
+            const allNotifs = getNotifList();
+            if (allNotifs.length === 0) return;
+            const allIds = allNotifs.map(n => n.id);
+            markNotifAsRead(allIds);
+        }
+
+        function deleteSingleNotif(id) {
+            if(!deletedNotifIds.includes(id)) {
+                deletedNotifIds.push(id);
+                localStorage.setItem('deletedNotifIds', JSON.stringify(deletedNotifIds));
+                updateNotifications();
+            }
+        }
+
+        function deleteSelectedNotifs() {
+            const selectedIds = getSelectedNotifIds();
+            if (selectedIds.length === 0) return alert('삭제할 알림을 선택해주세요.');
+
+            if (confirm(`선택한 ${selectedIds.length}개의 알림을 삭제하시겠습니까?`)) {
+                selectedIds.forEach(id => {
+                    if(!deletedNotifIds.includes(id)) deletedNotifIds.push(id);
+                });
+                localStorage.setItem('deletedNotifIds', JSON.stringify(deletedNotifIds));
+                updateNotifications();
+            }
+        }
+
+        function deleteAllNotifs() {
+            const allNotifs = getNotifList();
+            if (allNotifs.length === 0) return;
+
+            if (confirm('전체 알림을 삭제하시겠습니까?')) {
+                allNotifs.forEach(n => {
+                    if(!deletedNotifIds.includes(n.id)) deletedNotifIds.push(n.id);
+                });
+                localStorage.setItem('deletedNotifIds', JSON.stringify(deletedNotifIds));
+                updateNotifications();
+            }
+        }
+
+        function toggleSelectAllTasks(mainCb) {
+            const checkboxes = document.querySelectorAll('.task-item-checkbox');
+            checkboxes.forEach(cb => cb.checked = mainCb.checked);
+        }
+
+        function getSelectedTaskIds() {
+            const checkboxes = document.querySelectorAll('.task-item-checkbox:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        async function deleteSelectedTasks() {
+            const selectedIds = getSelectedTaskIds();
+            if (selectedIds.length === 0) return alert('삭제할 업무를 체크박스로 선택해주세요.');
+
+            if (confirm(`선택한 ${selectedIds.length}개 업무를 삭제하시겠습니까?`)) {
+                tasks = tasks.filter(t => !selectedIds.includes(t.id));
+                addLog(`선택 업무 ${selectedIds.length}건 삭제`);
+                updateNotifications();
+                render();
+                await saveCloudData();
+            }
+        }
+
+        async function deleteAllTasks() {
+            const filtered = getFilteredTasks();
+            if (filtered.length === 0) return alert('삭제할 업무 목록이 없습니다.');
+
+            if (confirm(`현재 화면에 표시된 ${filtered.length}건의 업무를 전체 삭제하시겠습니까?`)) {
+                const deleteIds = filtered.map(t => t.id);
+                tasks = tasks.filter(t => !deleteIds.includes(t.id));
+                addLog(`업무 ${deleteIds.length}건 일괄 전체 삭제`);
+                updateNotifications();
+                render();
+                await saveCloudData();
+            }
+        }
+
+        async function sendBroadcastNotification() {
+            const category = document.getElementById('broadcastCategory').value;
+            const title = document.getElementById('broadcastTitle').value.trim();
+            const body = document.getElementById('broadcastBody').value.trim();
+
+            if (!title || !body) return alert('알림 제목과 메시지 내용을 모두 입력해 주세요.');
+
+            const now = new Date();
+            const timeStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+
+            broadcastNotifs.unshift({
+                id: Date.now().toString(),
+                category: category,
+                title: title,
+                body: body,
+                date: timeStr
+            });
+
+            if (broadcastNotifs.length > 20) broadcastNotifs.pop();
+
+            addLog(`전체 회원 알림 발송 [${category}]: "${title}"`);
+
+            document.getElementById('broadcastTitle').value = '';
+            document.getElementById('broadcastBody').value = '';
+
+            alert('선택한 알림 카테고리로 모든 회원의 알림 목록(🔔)에 성공적으로 발송되었습니다!');
+            updateNotifications();
+            await saveCloudData();
+        }
+
+        function openContactAdminModal() {
+            document.getElementById('contactAdminModal').classList.remove('hidden');
+            document.getElementById('contactAdminModal').classList.add('flex');
+        }
+
+        function closeContactAdminModal() {
+            document.getElementById('contactAdminModal').classList.add('hidden');
+            document.getElementById('contactAdminModal').classList.remove('flex');
+            document.getElementById('contactAdminTitle').value = '';
+            document.getElementById('contactAdminBody').value = '';
+        }
+
+        async function sendMsgToAdmin() {
+            const title = document.getElementById('contactAdminTitle').value.trim();
+            const body = document.getElementById('contactAdminBody').value.trim();
+
+            if (!title || !body) return alert('제목과 내용을 모두 입력해 주세요.');
+
+            const now = new Date();
+            const timeStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+
+            adminInbox.unshift({
+                id: Date.now().toString(),
+                sender: currentUser.name,
+                dept: currentUser.dept || '소속미지정',
+                title: title,
+                body: body,
+                date: timeStr
+            });
+
+            addLog(`최고 관리자에게 문의 메시지 전송`);
+
+            alert('최고 관리자에게 메시지가 전달되었습니다!');
+            closeContactAdminModal();
+            await saveCloudData();
+        }
+
+        function renderAdminInbox() {
+            const list = document.getElementById('adminInboxList');
+            if (!list) return;
+
+            if (adminInbox.length === 0) {
+                list.innerHTML = `<div class="text-center py-8 text-slate-400">수신된 관리자 메시지가 없습니다.</div>`;
+                return;
+            }
+
+            list.innerHTML = adminInbox.map((msg, idx) => `
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-indigo-900"><i class="fa-solid fa-user text-indigo-600 mr-1"></i>${msg.sender} 선생님 <span class="text-[10px] text-slate-500">(${msg.dept})</span></span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-slate-400">${msg.date}</span>
+                            <button onclick="deleteAdminInboxMsg(${idx})" class="text-red-500 hover:text-red-700 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <h5 class="font-bold text-slate-800 text-xs">${msg.title}</h5>
+                    <p class="text-slate-600 text-[11px] bg-white p-2 rounded border border-slate-100">${msg.body}</p>
+                </div>
+            `).join('');
+        }
+
+        async function deleteAdminInboxMsg(idx) {
+            if (confirm('이 메시지를 삭제하시겠습니까?')) {
+                adminInbox.splice(idx, 1);
+                renderAdminInbox();
+                updateNotifications();
+                await saveCloudData();
+            }
+        }
+
+        async function clearAdminInbox() {
+            if (confirm('수신함의 모든 메시지를 삭제하시겠습니까?')) {
+                adminInbox = [];
+                renderAdminInbox();
+                updateNotifications();
+                await saveCloudData();
+            }
+        }
+
+        function openNotifModal() {
+            document.getElementById('notifModal').classList.remove('hidden');
+            document.getElementById('notifModal').classList.add('flex');
+            updateNotifications();
+        }
+        function closeNotifModal() {
+            document.getElementById('notifModal').classList.add('hidden');
+            document.getElementById('notifModal').classList.remove('flex');
+        }
+
+        function getUniqueDepartments() {
+            const depts = new Set(['교무기획부', '학생생활부', '행정실']);
+            registeredUsers.forEach(u => { if(u.dept) depts.add(u.dept); });
+            tasks.forEach(t => { if(t.dept) depts.add(t.dept); });
+            return Array.from(depts);
+        }
+
+        function updateDeptSelects() {
+            const filter = document.getElementById('deptFilter');
+            const taskDept = document.getElementById('taskDept');
+            const uniqueDepts = getUniqueDepartments();
+
+            let filterHtml = '<option value="">전체 부서 보기</option>';
+            let formHtml = '';
+
+            uniqueDepts.forEach(d => {
+                filterHtml += `<option value="${d}">${d}</option>`;
+                formHtml += `<option value="${d}">${d}</option>`;
+            });
+
+            filter.innerHTML = filterHtml;
+            if(taskDept) taskDept.innerHTML = formHtml;
+        }
+
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            if(!dropZone) return;
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                handleFileSelect(files);
+            }, false);
+        }
+
+        function openOrDownloadFile(fileName) {
+            let blobUrl = '';
+            if (fileObjects[fileName]) {
+                blobUrl = URL.createObjectURL(fileObjects[fileName]);
+            } else {
+                const dummyBlob = new Blob([`[Sewha Workspace 첨부파일]\n파일명: ${fileName}\n일시: ${new Date().toLocaleString()}`], { type: 'text/plain;charset=utf-8' });
+                blobUrl = URL.createObjectURL(dummyBlob);
+            }
+
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = fileName;
+            a.target = '_blank';
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        }
+
+        function handleFileSelect(files) {
+            for(let i=0; i<files.length; i++) {
+                tempFiles.push(files[i].name);
+                fileObjects[files[i].name] = files[i];
+            }
+            renderTempFiles();
+        }
+
+        function renderTempFiles() {
+            const ui = document.getElementById('fileListUI');
+            ui.innerHTML = tempFiles.map((f, idx) => `
+                <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                    <i class="fa-solid fa-file text-indigo-500"></i>
+                    <button type="button" onclick="openOrDownloadFile('${f}')" class="hover:underline font-bold text-indigo-900">${f}</button>
+                    <button type="button" onclick="removeTempFile(${idx})" class="text-red-500 hover:text-red-700 ml-1">×</button>
+                </span>
+            `).join('');
+        }
+
+        function removeTempFile(idx) {
+            tempFiles.splice(idx, 1);
+            renderTempFiles();
+        }
+
+        function openBackupModal() {
+            const modal = document.getElementById('backupModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeBackupModal() {
+            const modal = document.getElementById('backupModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('backupFileInput').value = '';
+        }
+
+        function exportBackupExcel() {
+            const taskRows = tasks.map(t => ({
+                "ID": t.id,
+                "업무명": t.name,
+                "상세설명": t.desc || '',
+                "부서": t.dept,
+                "담당자": t.assignee,
+                "시작일": t.startDate || t.endDate,
+                "마감일": t.endDate,
+                "진행률(%)": t.progress,
+                "첨부파일목록": (t.files || []).join('||'),
+                "댓글데이터JSON": JSON.stringify(t.comments || [])
+            }));
+
+            const userRows = registeredUsers.map(u => ({
+                "이름": u.name,
+                "학년도": u.year,
+                "부서명": u.dept || '',
+                "비밀번호": u.password || '',
+                "비밀번호설정여부": u.hasPw ? "Y" : "N"
+            }));
+
+            const wb = XLSX.utils.book_new();
+            const wsTasks = XLSX.utils.json_to_sheet(taskRows);
+            const wsUsers = XLSX.utils.json_to_sheet(userRows);
+
+            XLSX.utils.book_append_sheet(wb, wsTasks, "업무목록백업");
+            XLSX.utils.book_append_sheet(wb, wsUsers, "회원목록백업");
+
+            const dateStr = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `세화고_학사일정_시스템백업_${dateStr}.xlsx`);
+            addLog(`전체 시스템 백업 엑셀 다운로드`);
+        }
+
+        function exportFilteredExcel() {
+            const filtered = getFilteredTasks();
+            const rows = filtered.map(t => ({
+                "상태": t.progress == 100 ? '완료' : '진행중',
+                "부서": t.dept,
+                "업무명": t.name,
+                "상세설명": t.desc || '',
+                "담당자": t.assignee,
+                "시작일": t.startDate || t.endDate,
+                "마감일": t.endDate,
+                "진행률(%)": t.progress + '%',
+                "첨부파일수": (t.files || []).length
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "현재필터목록");
+
+            const dateStr = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `세화고_학사일정_필터목록_${dateStr}.xlsx`);
+            addLog(`현재 필터링된 업무 목록 엑셀 추출 (${filtered.length}건)`);
+        }
+
+        function importBackupExcel() {
+            const fileInput = document.getElementById('backupFileInput');
+            if (!fileInput.files[0]) return alert('복원할 엑셀 백업 파일(.xlsx)을 선택해주세요.');
+
+            if (!confirm('경고: 백업 데이터로 복원하면 현재 모든 데이터가 덮어씌워집니다. 진행하시겠습니까?')) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    const taskSheet = workbook.Sheets["업무목록백업"];
+                    const userSheet = workbook.Sheets["회원목록백업"];
+
+                    if (!taskSheet || !userSheet) {
+                        return alert('올바른 백업 엑셀 파일이 아닙니다.');
+                    }
+
+                    const rawTasks = XLSX.utils.sheet_to_json(taskSheet);
+                    const rawUsers = XLSX.utils.sheet_to_json(userSheet);
+
+                    tasks = rawTasks.map(t => ({
+                        id: String(t["ID"] || Date.now()),
+                        name: String(t["업무명"] || ''),
+                        desc: String(t["상세설명"] || ''),
+                        dept: String(t["부서"] || '교무기획부'),
+                        assignee: String(t["담당자"] || ''),
+                        startDate: String(t["시작일"] || ''),
+                        endDate: String(t["마감일"] || ''),
+                        progress: parseInt(t["진행률(%)"]) || 0,
+                        files: t["첨부파일목록"] ? String(t["첨부파일목록"]).split('||') : [],
+                        comments: t["댓글데이터JSON"] ? JSON.parse(t["댓글데이터JSON"]) : []
+                    }));
+
+                    registeredUsers = rawUsers.map(u => ({
+                        name: String(u["이름"] || ''),
+                        year: String(u["학년도"] || '2026'),
+                        dept: String(u["부서명"] || '교무기획부'),
+                        password: u["비밀번호"] ? String(u["비밀번호"]) : null,
+                        hasPw: u["비밀번호설정여부"] === "Y"
+                    }));
+
+                    alert('엑셀 백업 데이터 복원이 완료되었습니다!');
+                    addLog(`백업 데이터 복원 성공`);
+                    closeBackupModal();
+                    updateDeptSelects();
+                    render();
+                    saveCloudData();
+                } catch (err) {
+                    console.error(err);
+                    alert('엑셀 파일 분석 오류가 발생했습니다.');
+                }
+            };
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        function openUserModal() {
+            const modal = document.getElementById('userModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            switchAdminSubTab('users');
+            renderUserList();
+            renderAdminInbox();
+            renderAuditLogs();
+        }
+
+        function switchAdminSubTab(sub) {
+            const btnUsers = document.getElementById('tabUserListBtn');
+            const btnBroadcast = document.getElementById('tabBroadcastBtn');
+            const btnInbox = document.getElementById('tabAdminInboxBtn');
+            const btnLogs = document.getElementById('tabAuditLogBtn');
+
+            const secUsers = document.getElementById('adminUserTabSection');
+            const secBroadcast = document.getElementById('adminBroadcastTabSection');
+            const secInbox = document.getElementById('adminInboxTabSection');
+            const secLogs = document.getElementById('adminAuditLogTabSection');
+
+            secUsers.classList.add('hidden');
+            secBroadcast.classList.add('hidden');
+            secInbox.classList.add('hidden');
+            secLogs.classList.add('hidden');
+
+            btnUsers.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
+            btnBroadcast.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
+            btnInbox.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
+            btnLogs.className = "py-2 px-3 text-slate-500 whitespace-nowrap";
+
+            if(sub === 'users') {
+                secUsers.classList.remove('hidden');
+                btnUsers.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
+            } else if(sub === 'broadcast') {
+                secBroadcast.classList.remove('hidden');
+                btnBroadcast.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
+            } else if(sub === 'inbox') {
+                secInbox.classList.remove('hidden');
+                btnInbox.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
+                renderAdminInbox();
+            } else {
+                secLogs.classList.remove('hidden');
+                btnLogs.className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap";
+            }
+        }
+
+        function closeUserModal() {
+            const modal = document.getElementById('userModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            updateDeptSelects();
+            render();
+        }
+
+        function renderUserList() {
+            const list = document.getElementById('userListUI');
+            document.getElementById('userCount').innerText = registeredUsers.length;
+
+            list.innerHTML = registeredUsers.map((u, i) => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-2 font-bold text-slate-800">${u.name}</td>
+                    <td class="p-2 text-slate-500">${u.year}</td>
+                    <td class="p-2 text-indigo-700 font-medium">${u.dept || '-'}</td>
+                    <td class="p-2">
+                        ${u.hasPw 
+                            ? '<span class="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-bold text-[10px] whitespace-nowrap">설정완료</span>' 
+                            : '<span class="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded font-bold text-[10px] whitespace-nowrap">미설정</span>'}
+                    </td>
+                    <td class="p-2 text-right space-x-1 whitespace-nowrap">
+                        <button onclick="resetUserPw(${i})" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">초기화</button>
+                        <button onclick="deleteUser(${i})" class="text-[10px] bg-red-50 hover:bg-red-100 text-red-600 px-1.5 py-0.5 rounded"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function addSingleUser() {
+            const name = document.getElementById('addUserName').value.trim();
+            const year = document.getElementById('addUserYear').value.trim();
+            const dept = document.getElementById('addUserDept').value.trim() || '교무기획부';
+
+            if (!name || !year) return alert('이름과 학년도를 모두 입력해주세요.');
+
+            if (registeredUsers.some(u => u.name === name && u.year === year)) {
+                return alert('이미 존재하는 회원입니다.');
+            }
+
+            registeredUsers.push({ name, year, dept, password: null, hasPw: false });
+
+            addLog(`신규 회원 등록: ${name} (${dept})`);
+            document.getElementById('addUserName').value = '';
+            document.getElementById('addUserDept').value = '';
+            renderUserList();
+            updateDeptSelects();
+            await saveCloudData();
+        }
+
+        async function resetUserPw(idx) {
+            if (confirm(`${registeredUsers[idx].name} 회원의 비밀번호를 초기화하시겠습니까?`)) {
+                addLog(`회원 비밀번호 초기화: ${registeredUsers[idx].name}`);
+                registeredUsers[idx].password = null;
+                registeredUsers[idx].hasPw = false;
+                renderUserList();
+                await saveCloudData();
+            }
+        }
+
+        async function deleteUser(idx) {
+            if (confirm(`${registeredUsers[idx].name} 회원을 삭제하시겠습니까?`)) {
+                addLog(`회원 삭제: ${registeredUsers[idx].name}`);
+                registeredUsers.splice(idx, 1);
+                renderUserList();
+                updateDeptSelects();
+                await saveCloudData();
+            }
+        }
+
+        function downloadTemplate() {
+            const data = [
+                ["이름", "학년도", "부서명"],
+                ["홍길동", "2026", "교무기획부"],
+                ["김철수", "2026", "학생생활부"]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "회원명단");
+            XLSX.writeFile(wb, "세화고_회원일괄등록양식_2026.xlsx");
+        }
+
+        function uploadExcelUsers() {
+            const fileInput = document.getElementById('excelFileInput');
+            if (!fileInput.files[0]) return alert('엑셀 파일을 선택해주세요.');
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+
+                registeredUsers = [];
+
+                let addedCount = 0;
+                rows.forEach(row => {
+                    const name = row['이름'] || row['성명'];
+                    const year = String(row['학년도'] || '2026');
+                    const dept = row['부서명'] || row['부서'] || '교무기획부';
+
+                    if (name && !registeredUsers.some(u => u.name === name && u.year === year)) {
+                        registeredUsers.push({ name, year, dept, password: null, hasPw: false });
+                        addedCount++;
+                    }
+                });
+
+                alert(`기존 회원 자료를 삭제하고, 새롭게 ${addedCount}명의 회원을 등록했습니다!`);
+                addLog(`엑셀로 회원 ${addedCount}명 덮어쓰기 등록`);
+                fileInput.value = '';
+                renderUserList();
+                updateDeptSelects();
+                await saveCloudData();
+            };
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        function downloadTaskTemplate() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const data = [
+                ["업무명", "상세설명", "부서", "담당자", "시작일", "마감일", "진행률(%)"],
+                ["2학기 교육과정 수립", "세부지침 참고", "교무기획부", "홍길동", todayStr, todayStr, "0"],
+                ["학생 안전점검 실시", "시설 점검표 작성", "학생생활부", "김철수", todayStr, todayStr, "20"]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "업무일괄등록");
+            XLSX.writeFile(wb, "세화고_업무일괄등록양식.xlsx");
+        }
+
+        function uploadExcelTasks() {
+            const fileInput = document.getElementById('taskExcelFileInput');
+            if (!fileInput.files[0]) return alert('엑셀 파일을 선택해주세요.');
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+
+                tasks = [];
+
+                let addedCount = 0;
+                const todayStr = new Date().toISOString().split('T')[0];
+
+                rows.forEach(row => {
+                    const name = row['업무명'];
+                    const desc = row['상세설명'] || '';
+                    const dept = row['부서'] || (currentUser.dept || '교무기획부');
+                    const assignee = row['담당자'] || currentUser.name;
+                    const startDate = row['시작일'] ? String(row['시작일']).trim() : todayStr;
+                    const endDate = row['마감일'] ? String(row['마감일']).trim() : todayStr;
+                    const progress = row['진행률(%)'] !== undefined ? parseInt(row['진행률(%)']) : 0;
+
+                    if (name) {
+                        tasks.push({
+                            id: (Date.now() + Math.random()).toString(),
+                            name: String(name).trim(),
+                            desc: String(desc).trim(),
+                            dept: String(dept).trim(),
+                            assignee: String(assignee).trim(),
+                            startDate: startDate,
+                            endDate: endDate,
+                            progress: isNaN(progress) ? 0 : progress,
+                            files: [],
+                            comments: []
+                        });
+                        addedCount++;
+                    }
+                });
+
+                if (addedCount > 0) {
+                    alert(`기존 업무 자료를 삭제하고, 새롭게 ${addedCount}건의 업무를 등록했습니다!`);
+                    addLog(`엑셀로 업무 ${addedCount}건 덮어쓰기 등록`);
+                    fileInput.value = '';
+                    closeTaskModal();
+                    updateDeptSelects();
+                    render();
+                    await saveCloudData();
+                } else {
+                    alert('등록할 업무 데이터가 올바르지 않습니다.');
+                }
+            };
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        function setStatusFilter(status) {
+            selectedStatusFilter = status;
+
+            const cards = ['cardAll', 'cardOngoing', 'cardWarning', 'cardExpired'];
+            cards.forEach(c => {
+                document.getElementById(c).classList.remove('ring-2', 'ring-indigo-500', 'ring-blue-500', 'ring-amber-500', 'ring-red-500', 'stat-card-active');
+            });
+
+            const badge = document.getElementById('statusFilterBadge');
+            const badgeText = document.getElementById('statusFilterName');
+
+            if (status === 'ONGOING') {
+                document.getElementById('cardOngoing').classList.add('ring-2', 'ring-blue-500', 'stat-card-active');
+                badge.classList.remove('hidden');
+                badgeText.innerText = '진행 중 업무';
+            } else if (status === 'WARNING') {
+                document.getElementById('cardWarning').classList.add('ring-2', 'ring-amber-500', 'stat-card-active');
+                badge.classList.remove('hidden');
+                badgeText.innerText = '마감 임박 업무';
+            } else if (status === 'EXPIRED') {
+                document.getElementById('cardExpired').classList.add('ring-2', 'ring-red-500', 'stat-card-active');
+                badge.classList.remove('hidden');
+                badgeText.innerText = '기한 만료 업무';
+            } else {
+                document.getElementById('cardAll').classList.add('ring-2', 'ring-indigo-500', 'stat-card-active');
+                badge.classList.add('hidden');
+            }
+
+            render();
+        }
+
+        function handleDateFilterTypeChange() {
+            const type = document.getElementById('dateFilterType').value;
+            const yearInput = document.getElementById('filterYear');
+            const monthInput = document.getElementById('filterMonth');
+            const dayInput = document.getElementById('filterDay');
+            const rangeGroup = document.getElementById('filterRangeGroup');
+
+            yearInput.classList.add('hidden');
+            monthInput.classList.add('hidden');
+            dayInput.classList.add('hidden');
+            rangeGroup.classList.add('hidden');
+
+            if (type === 'YEAR') yearInput.classList.remove('hidden');
+            else if (type === 'MONTH') monthInput.classList.remove('hidden');
+            else if (type === 'DAY') dayInput.classList.remove('hidden');
+            else if (type === 'RANGE') rangeGroup.classList.remove('hidden');
+
+            render();
+        }
+
+        function switchView(view) {
+            currentView = view;
+            const btnTable = document.getElementById('btnViewTable');
+            const btnGantt = document.getElementById('btnViewGantt');
+            const secTable = document.getElementById('tableViewSection');
+            const secGantt = document.getElementById('ganttViewSection');
+
+            if (view === 'table') {
+                secTable.classList.remove('hidden');
+                secGantt.classList.add('hidden');
+                btnTable.className = 'px-2.5 py-1.5 rounded-md bg-white text-indigo-900 shadow-xs transition';
+                btnGantt.className = 'px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition';
+            } else {
+                secTable.classList.add('hidden');
+                secGantt.classList.remove('hidden');
+                btnGantt.className = 'px-2.5 py-1.5 rounded-md bg-white text-indigo-900 shadow-xs transition';
+                btnTable.className = 'px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition';
+            }
+            render();
+        }
+
+        function zoomGantt(delta) {
+            ganttCellWidth += delta;
+            if (ganttCellWidth < 18) ganttCellWidth = 18;
+            if (ganttCellWidth > 80) ganttCellWidth = 80;
+
+            const percent = Math.round((ganttCellWidth / 32) * 100);
+            document.getElementById('ganttZoomVal').innerText = percent + '%';
+            render();
+        }
+
+        function resetGanttZoom() {
+            ganttCellWidth = 32;
+            document.getElementById('ganttZoomVal').innerText = '100%';
+            render();
+        }
+
+        function fitGanttToOnePage() {
+            const filteredTasks = getFilteredTasks();
+            if (!filteredTasks || filteredTasks.length === 0) return;
+
+            let minDateObj = new Date();
+            let maxDateObj = new Date();
+            minDateObj.setDate(minDateObj.getDate() - 2);
+            maxDateObj.setDate(maxDateObj.getDate() + 10);
+
+            filteredTasks.forEach(t => {
+                const s = new Date(t.startDate || t.endDate);
+                const e = new Date(t.endDate);
+                if (s < minDateObj) minDateObj = new Date(s);
+                if (e > maxDateObj) maxDateObj = new Date(e);
+            });
+
+            const totalDays = Math.max(1, Math.floor((maxDateObj - minDateObj) / (1000 * 60 * 60 * 24)) + 1);
+            
+            const viewport = document.getElementById('ganttViewport');
+            const availableWidth = (viewport ? viewport.clientWidth : 900) - 230;
+
+            let calculatedCellWidth = Math.floor(availableWidth / totalDays);
+            if (calculatedCellWidth < 18) calculatedCellWidth = 18;
+            if (calculatedCellWidth > 80) calculatedCellWidth = 80;
+
+            ganttCellWidth = calculatedCellWidth;
+            const percent = Math.round((ganttCellWidth / 32) * 100);
+            document.getElementById('ganttZoomVal').innerText = percent + '%';
+            render();
+        }
+
+        function toggleSortOrder() {
+            currentSortAsc = !currentSortAsc;
+            const text = document.getElementById('sortOrderText');
+            const icon = document.getElementById('sortOrderIcon');
+
+            if (currentSortAsc) {
+                text.innerText = "오름차순";
+                icon.className = "fa-solid fa-arrow-down-a-z text-indigo-600";
+            } else {
+                text.innerText = "내림차순";
+                icon.className = "fa-solid fa-arrow-up-z-a text-indigo-600";
+            }
+            render();
+        }
+
+        function handleHeaderSort(field) {
+            const select = document.getElementById('sortBy');
+            if (select.value === field) {
+                toggleSortOrder();
+            } else {
+                select.value = field;
+                currentSortAsc = true;
+                document.getElementById('sortOrderText').innerText = "오름차순";
+                document.getElementById('sortOrderIcon').className = "fa-solid fa-arrow-down-a-z text-indigo-600";
+                render();
+            }
+        }
+
+        function getFilteredTasks() {
+            const deptFilter = document.getElementById('deptFilter').value;
+            const searchKeyword = document.getElementById('searchInput').value.trim().toLowerCase();
+            const dateTypeElement = document.getElementById('dateFilterType');
+            const dateType = dateTypeElement ? dateTypeElement.value : 'ALL';
+            const today = new Date().toISOString().split('T')[0];
+
+            let result = tasks.filter(t => {
+                const matchUser = (currentUser.role === 'ADMIN') || (t.assignee === currentUser.name);
+                const matchDept = !deptFilter || t.dept === deptFilter;
+                const matchSearch = !searchKeyword || 
+                    t.name.toLowerCase().includes(searchKeyword) || 
+                    (t.desc && t.desc.toLowerCase().includes(searchKeyword)) ||
+                    t.assignee.toLowerCase().includes(searchKeyword) || 
+                    t.dept.toLowerCase().includes(searchKeyword);
+
+                let matchStatus = true;
+                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+
+                if (selectedStatusFilter === 'ONGOING') {
+                    matchStatus = t.progress < 100;
+                } else if (selectedStatusFilter === 'WARNING') {
+                    matchStatus = t.progress < 100 && diffDays >= 0 && diffDays <= 3;
+                } else if (selectedStatusFilter === 'EXPIRED') {
+                    matchStatus = t.progress < 100 && diffDays < 0;
+                }
+
+                let matchDate = true;
+                if (dateType === 'YEAR') {
+                    const yearVal = document.getElementById('filterYear').value;
+                    if (yearVal) matchDate = (t.endDate && t.endDate.startsWith(yearVal)) || (t.startDate && t.startDate.startsWith(yearVal));
+                } else if (dateType === 'MONTH') {
+                    const monthVal = document.getElementById('filterMonth').value;
+                    if (monthVal) matchDate = (t.endDate && t.endDate.slice(0,7) === monthVal) || (t.startDate && t.startDate.slice(0,7) === monthVal);
+                } else if (dateType === 'DAY') {
+                    const dayVal = document.getElementById('filterDay').value;
+                    if (dayVal) matchDate = t.endDate === dayVal || t.startDate === dayVal;
+                } else if (dateType === 'RANGE') {
+                    const s = document.getElementById('filterRangeStart').value;
+                    const e = document.getElementById('filterRangeEnd').value;
+                    if (s && e) {
+                        matchDate = (t.endDate >= s && t.endDate <= e) || (t.startDate >= s && t.startDate <= e);
+                    }
+                }
+
+                return matchUser && matchDept && matchSearch && matchStatus && matchDate;
+            });
+
+            const sortBy = document.getElementById('sortBy').value;
+            result.sort((a, b) => {
+                let v1 = a[sortBy] || '';
+                let v2 = b[sortBy] || '';
+                if (sortBy === 'files') {
+                    v1 = (a.files || []).length;
+                    v2 = (b.files || []).length;
+                }
+                if (v1 < v2) return currentSortAsc ? -1 : 1;
+                if (v1 > v2) return currentSortAsc ? 1 : -1;
+                return 0;
+            });
+
+            return result;
+        }
+
+        function render() {
+            if (!currentUser) return;
+
+            const today = new Date().toISOString().split('T')[0];
+            const myTasks = (currentUser.role === 'ADMIN') ? tasks : tasks.filter(t => t.assignee === currentUser.name);
+
+            let total = myTasks.length;
+            let ongoing = 0;
+            let warning = 0;
+            let expired = 0;
+
+            myTasks.forEach(t => {
+                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                if (t.progress < 100) {
+                    ongoing++;
+                    if (diffDays >= 0 && diffDays <= 3) warning++;
+                    if (diffDays < 0) expired++;
+                }
+            });
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statOngoing').innerText = ongoing;
+            document.getElementById('statWarning').innerText = warning;
+            document.getElementById('statExpired').innerText = expired;
+
+            const filtered = getFilteredTasks();
+
+            if (currentView === 'table') {
+                renderTable(filtered);
+            } else {
+                renderGantt(filtered);
+            }
+
+            if (currentUser.role === 'ADMIN') {
+                renderAdminCharts();
+            }
+        }
+
+        function renderTable(filtered) {
+            const tbody = document.getElementById('taskList');
+            const today = new Date().toISOString().split('T')[0];
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400">조건에 부합하는 등록 업무가 없습니다.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(t => {
+                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                let statusBadge = '';
+
+                if (t.progress == 100) {
+                    statusBadge = `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold text-[11px]">완료</span>`;
+                } else if (diffDays < 0) {
+                    statusBadge = `<span class="bg-red-100 text-red-800 px-2 py-0.5 rounded font-bold text-[11px]">기한만료</span>`;
+                } else if (diffDays <= 3) {
+                    statusBadge = `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold text-[11px]">임박 (D-${diffDays})</span>`;
+                } else {
+                    statusBadge = `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold text-[11px]">진행중</span>`;
+                }
+
+                const fileCount = (t.files || []).length;
+                const fileTags = (t.files || []).map(f => `
+                    <button onclick="openOrDownloadFile('${f}')" class="text-indigo-600 hover:underline block text-[10px] text-left max-w-[120px] truncate">
+                        <i class="fa-solid fa-file-lines text-slate-400 mr-0.5"></i>${f}
+                    </button>
+                `).join('');
+
+                return `
+                <tr class="hover:bg-indigo-50/40 transition">
+                    <td class="p-3 text-center">
+                        <input type="checkbox" class="task-item-checkbox accent-indigo-600 rounded cursor-pointer" value="${t.id}">
+                    </td>
+                    <td class="p-3 font-medium">${statusBadge}</td>
+                    <td class="p-3 text-slate-500 whitespace-nowrap">${t.dept}</td>
+                    <td class="p-3">
+                        <button onclick="openTaskModal('${t.id}')" class="font-bold text-slate-800 text-left hover:text-indigo-600 hover:underline max-w-[220px] sm:max-w-xs truncate block">${t.name}</button>
+                        <p class="text-[10px] text-slate-400 max-w-[220px] sm:max-w-xs truncate mt-0.5">${t.desc || '설명 없음'}</p>
+                    </td>
+                    <td class="p-3 font-semibold text-slate-700 whitespace-nowrap"><i class="fa-regular fa-user text-slate-400 mr-1"></i>${t.assignee}</td>
+                    <td class="p-3 whitespace-nowrap">
+                        <div class="text-[10px] text-slate-500 mb-0.5">${t.startDate || t.endDate} ~ ${t.endDate}</div>
+                        <div class="w-24 bg-slate-200 rounded-full h-2 overflow-hidden flex">
+                            <div class="bg-indigo-600 h-2" style="width: ${t.progress}%"></div>
+                        </div>
+                        <span class="text-[10px] font-bold text-indigo-600 mt-0.5 block">${t.progress}% 완료</span>
+                    </td>
+                    <td class="p-3">${fileTags || '<span class="text-slate-300">-</span>'}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="openChatWindow('${t.id}')" class="text-slate-400 hover:text-amber-500 font-bold flex items-center justify-center gap-0.5">
+                            <i class="fa-regular fa-comment-dots text-sm"></i> <span>${(t.comments || []).length}</span>
+                        </button>
+                    </td>
+                    <td class="p-3 text-right">
+                        <button onclick="openTaskModal('${t.id}')" class="bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold shadow-2xs whitespace-nowrap">상세/수정</button>
+                    </td>
+                </tr>`;
+            }).join('');
+            
+            document.getElementById('selectAllTasksCb').checked = false;
+        }
+
+        function renderGantt(filtered) {
+            const container = document.getElementById('ganttContainer');
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">표시할 간트차트 데이터가 없습니다.</div>';
+                return;
+            }
+
+            let minDateObj = new Date();
+            let maxDateObj = new Date();
+            minDateObj.setDate(minDateObj.getDate() - 2);
+            maxDateObj.setDate(maxDateObj.getDate() + 10);
+
+            filtered.forEach(t => {
+                const s = new Date(t.startDate || t.endDate);
+                const e = new Date(t.endDate);
+                if (s < minDateObj) minDateObj = new Date(s);
+                if (e > maxDateObj) maxDateObj = new Date(e);
+            });
+
+            let dateArray = [];
+            let currentCursor = new Date(minDateObj);
+            while (currentCursor <= maxDateObj) {
+                dateArray.push(currentCursor.toISOString().split('T')[0]);
+                currentCursor.setDate(currentCursor.getDate() + 1);
+            }
+
+            let html = `<div class="flex select-none border-b font-bold bg-slate-100 text-slate-600 sticky top-0 z-10 text-[10px]">
+                <div class="w-[220px] p-2 border-r bg-slate-100 shrink-0 sticky left-0 z-20">업무 / 담당 부서명</div>`;
+            
+            dateArray.forEach(d => {
+                const dateObj = new Date(d);
+                const dayLabel = ['일','월','화','수','목','금','토'][dateObj.getDay()];
+                const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+                const weekendClass = isWeekend ? 'bg-red-50 text-red-500' : '';
+                
+                html += `<div class="text-center p-1 border-r shrink-0 flex flex-col justify-center ${weekendClass}" style="width: ${ganttCellWidth}px">
+                    <div>${d.slice(5)}</div>
+                    <div class="text-[9px] opacity-70">${dayLabel}</div>
+                </div>`;
+            });
+            html += '</div>';
+
+            filtered.forEach(t => {
+                const startDateStr = t.startDate || t.endDate;
+                let startIndex = dateArray.indexOf(startDateStr);
+                let endIndex = dateArray.indexOf(t.endDate);
+
+                if (startIndex === -1) startIndex = 0;
+                if (endIndex === -1) endIndex = dateArray.length - 1;
+                if (startIndex > endIndex) startIndex = endIndex;
+
+                const leftOffset = 220 + (startIndex * ganttCellWidth);
+                const barWidth = ((endIndex - startIndex + 1) * ganttCellWidth) - 4;
+
+                const today = new Date().toISOString().split('T')[0];
+                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                
+                let colorClass = 'bg-blue-500';
+                if (t.progress == 100) colorClass = 'bg-emerald-500';
+                else if (diffDays < 0) colorClass = 'bg-red-500';
+                else if (diffDays <= 3) colorClass = 'bg-amber-500';
+
+                html += `
+                <div class="flex items-center border-b relative hover:bg-slate-50 h-10 text-[11px]">
+                    <div class="w-[220px] p-2 border-r bg-white font-medium shrink-0 truncate sticky left-0 z-10 shadow-xs cursor-pointer hover:text-indigo-600 hover:underline" onclick="openTaskModal('${t.id}')">
+                        <div class="font-bold text-slate-800 truncate">${t.name}</div>
+                        <div class="text-[9px] text-slate-400 truncate">${t.dept} / ${t.assignee} (${t.progress}%)</div>
+                    </div>`;
+
+                dateArray.forEach(() => {
+                    html += `<div class="h-10 border-r opacity-20 shrink-0" style="width: ${ganttCellWidth}px"></div>`;
+                });
+
+                html += `
+                    <div onclick="openTaskModal('${t.id}')" class="absolute h-5 rounded ${colorClass} text-white font-bold px-1.5 flex items-center shadow-xs cursor-pointer hover:opacity-90 transition text-[9px] overflow-hidden" style="left: ${leftOffset}px; width: ${Math.max(15, barWidth)}px; top: 10px;" title="${t.name} (${t.progress}%)">
+                        <span class="truncate">${t.progress}%</span>
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderAdminCharts() {
+            const depts = getUniqueDepartments();
+            const deptProgressData = depts.map(d => {
+                const deptTasks = tasks.filter(t => t.dept === d);
+                if (deptTasks.length === 0) return 0;
+                const totalProgress = deptTasks.reduce((acc, curr) => acc + curr.progress, 0);
+                return Math.round(totalProgress / deptTasks.length);
+            });
+
+            if (deptChartInstance) deptChartInstance.destroy();
+            const ctx1 = document.getElementById('deptProgressChart');
+            if (ctx1) {
+                deptChartInstance = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: depts,
+                        datasets: [{
+                            label: '부서 평균 진행률(%)',
+                            data: deptProgressData,
+                            backgroundColor: 'rgba(79, 70, 229, 0.85)',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            datalabels: {
+                                anchor: 'end', align: 'end',
+                                formatter: (val) => val + '%',
+                                font: { weight: 'bold', size: 10 }
+                            }
+                        },
+                        scales: { y: { max: 110, ticks: { size: 10 } }, x: { ticks: { size: 10 } } }
+                    }
+                });
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            let ongoing = 0, warning = 0, expired = 0, completed = 0;
+
+            tasks.forEach(t => {
+                const diffDays = Math.ceil((new Date(t.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+                if (t.progress == 100) completed++;
+                else if (diffDays < 0) expired++;
+                else if (diffDays <= 3) warning++;
+                else ongoing++;
+            });
+
+            if (statusChartInstance) statusChartInstance.destroy();
+            const ctx2 = document.getElementById('statusPieChart');
+            if (ctx2) {
+                statusChartInstance = new Chart(ctx2, {
+                    type: 'pie',
+                    data: {
+                        labels: ['진행', '임박', '만료', '완료'],
+                        datasets: [{
+                            data: [ongoing, warning, expired, completed],
+                            backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444', '#10b981']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } },
+                            datalabels: {
+                                formatter: (value, ctx) => {
+                                    let sum = 0;
+                                    let dataArr = ctx.chart.data.datasets[0].data;
+                                    dataArr.map(data => { sum += data; });
+                                    if(sum === 0 || value === 0) return '';
+                                    return value + '건\n(' + Math.round(value*100 / sum) + '%)';
+                                },
+                                color: '#fff', font: { weight: 'bold', size: 9 }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function openTaskModal(targetId = null) {
+            updateDeptSelects();
+            
+            const assigneeSelect = document.getElementById('taskAssignee');
+            assigneeSelect.innerHTML = registeredUsers.map(u => `<option value="${u.name}">${u.name} (${u.dept})</option>`).join('');
+
+            tempFiles = [];
+            document.getElementById('fileListUI').innerHTML = '';
+
+            if (targetId) {
+                currentOpenTaskId = targetId;
+                const t = tasks.find(item => item.id === targetId);
+                if (!t) return;
+
+                document.getElementById('modalTitle').innerText = "업무 상세 정보 및 수정";
+                document.getElementById('batchTaskUploadSection').classList.add('hidden');
+                
+                document.getElementById('taskId').value = t.id;
+                document.getElementById('taskName').value = t.name;
+                document.getElementById('taskDesc').value = t.desc || '';
+                document.getElementById('taskDept').value = t.dept;
+                document.getElementById('taskAssignee').value = t.assignee;
+                document.getElementById('taskStartDate').value = t.startDate || t.endDate;
+                document.getElementById('taskEndDate').value = t.endDate;
+                document.getElementById('taskProgress').value = t.progress;
+                document.getElementById('progressVal').innerText = t.progress + '%';
+
+                tempFiles = [...(t.files || [])];
+                renderTempFiles();
+
+                document.getElementById('btnDeleteTask').classList.remove('hidden');
+                document.getElementById('commentSection').classList.remove('hidden');
+                renderComments(t);
+            } else {
+                currentOpenTaskId = null;
+                document.getElementById('modalTitle').innerText = "새로운 학사 업무 등록";
+                document.getElementById('batchTaskUploadSection').classList.remove('hidden');
+                
+                document.getElementById('taskForm').reset();
+                document.getElementById('taskId').value = '';
+                document.getElementById('taskStartDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('taskEndDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('progressVal').innerText = '0%';
+                
+                if(currentUser.role !== 'ADMIN') {
+                    document.getElementById('taskDept').value = currentUser.dept || '교무기획부';
+                    document.getElementById('taskAssignee').value = currentUser.name;
+                }
+
+                document.getElementById('btnDeleteTask').classList.add('hidden');
+                document.getElementById('commentSection').classList.add('hidden');
+            }
+
+            document.getElementById('taskModal').classList.remove('hidden');
+            document.getElementById('taskModal').classList.add('flex');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.add('hidden');
+            document.getElementById('taskModal').classList.remove('flex');
+        }
+
+        async function saveTask(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('taskId').value;
+            const name = document.getElementById('taskName').value.trim();
+            const desc = document.getElementById('taskDesc').value.trim();
+            const dept = document.getElementById('taskDept').value;
+            const assignee = document.getElementById('taskAssignee').value;
+            const startDate = document.getElementById('taskStartDate').value;
+            const endDate = document.getElementById('taskEndDate').value;
+            const progress = parseInt(document.getElementById('taskProgress').value);
+
+            if (id) {
+                const idx = tasks.findIndex(t => t.id === id);
+                if (idx !== -1) {
+                    tasks[idx].name = name;
+                    tasks[idx].desc = desc;
+                    tasks[idx].dept = dept;
+                    tasks[idx].assignee = assignee;
+                    tasks[idx].startDate = startDate;
+                    tasks[idx].endDate = endDate;
+                    tasks[idx].progress = progress;
+                    tasks[idx].files = [...tempFiles];
+                }
+                addLog(`업무 수정: "${name}"`);
+            } else {
+                const newTask = {
+                    id: Date.now().toString(),
+                    name, desc, dept, assignee, startDate, endDate, progress,
+                    files: [...tempFiles],
+                    comments: []
+                };
+                tasks.push(newTask);
+                addLog(`신규 업무 추가: "${name}"`);
+            }
+
+            closeTaskModal();
+            render();
+            await saveCloudData();
+        }
+
+        async function deleteCurrentTask() {
+            const id = document.getElementById('taskId').value;
+            if (!id) return;
+
+            if (confirm('이 업무를 완전히 삭제하시겠습니까?')) {
+                tasks = tasks.filter(t => t.id !== id);
+                addLog(`업무 단건 삭제 (ID: ${id})`);
+                closeTaskModal();
+                updateNotifications();
+                render();
+                await saveCloudData();
+            }
+        }
+
+        function renderComments(task) {
+            const container = document.getElementById('commentList');
+            if ((task.comments || []).length === 0) {
+                container.innerHTML = '<p class="text-slate-400 text-center py-4 text-[11px]">작성된 진행 코멘트 메시지가 없습니다.</p>';
+                return;
+            }
+
+            container.innerHTML = task.comments.map(c => `
+                <div class="text-[11px] leading-relaxed border-b border-slate-200/60 pb-1 mb-1 last:border-0">
+                    <span class="font-bold text-slate-800">${c.user}:</span>
+                    <span class="text-slate-700">${c.text}</span>
+                    <span class="text-[9px] text-slate-400 float-right mt-0.5">${c.date}</span>
+                </div>
+            `).join('');
+        }
+
+        function openChatWindow(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return alert('존재하지 않는 업무입니다.');
+
+            const msg = prompt(`[${task.name}] 업무 대화방\n메시지를 입력해 주세요:`);
+            if (msg === null || msg.trim() === '') return;
+
+            const now = new Date();
+            const dateStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+
+            if (!task.comments) task.comments = [];
+            task.comments.push({
+                user: currentUser.name,
+                text: msg.trim(),
+                date: dateStr
+            });
+
+            addLog(`업무 대화 메시지 작성: "${msg.trim()}"`);
+            renderComments(task);
+            render();
+            saveCloudData();
+        }
+    </script>
 </body>
 </html>
