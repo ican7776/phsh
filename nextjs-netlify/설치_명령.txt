@@ -1,5 +1,0 @@
-Next.js 앱을 Netlify에 올리기 전 한 번만 실행
-
-  npm install -D @netlify/plugin-nextjs
-
-그리고 netlify.toml을 저장소 최상단(package.json과 같은 위치)에 두십시오.
